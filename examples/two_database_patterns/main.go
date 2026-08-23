@@ -43,8 +43,8 @@ func main() {
 	fmt.Printf("1. Guardado en Base de Datos (1 Columna UTC):\n%s\n", string(pagoJSON))
 
 	// Al mostrarlo al cajero en Lima y al auditor en Madrid:
-	vistaLima, _ := timezoner.ProjectForUser(pago.PaidAtUTC.Time, "America/Lima")
-	vistaMadrid, _ := timezoner.ProjectForUser(pago.PaidAtUTC.Time, "Europe/Madrid")
+	vistaLima, _ := timezoner.ProjectForUser(pago.PaidAtUTC.Time(), "America/Lima")
+	vistaMadrid, _ := timezoner.ProjectForUser(pago.PaidAtUTC.Time(), "Europe/Madrid")
 	fmt.Println("2. Visualización adaptada a cada usuario:")
 	fmt.Printf("   • Cajero en Lima ve:   %s (%s)\n", vistaLima.Formatted, vistaLima.OffsetFormatted)
 	fmt.Printf("   • Auditor en Madrid ve: %s (%s)\n", vistaMadrid.Formatted, vistaMadrid.OffsetFormatted)
@@ -74,7 +74,7 @@ func main() {
 	fmt.Printf("   • Hora local en Lima:   %s (Garantizado siempre a las 10:00 AM)\n", horaLocalOriginal.Format("2006-01-02 15:04"))
 
 	// Médico especialista conectado desde Tokio para teleconsulta:
-	medicoTokio, _ := timezoner.ProjectForUser(cita.ScheduledAt.UTC.Time, "Asia/Tokyo")
+	medicoTokio, _ := timezoner.ProjectForUser(cita.ScheduledAt.UTC.Time(), "Asia/Tokyo")
 	fmt.Printf("   • Teleconsulta en Tokio: %s (Hora de Japón: %s)\n", medicoTokio.Formatted, medicoTokio.OffsetFormatted)
 
 	fmt.Println("\n====================================================================")

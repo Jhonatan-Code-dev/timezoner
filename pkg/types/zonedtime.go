@@ -11,6 +11,7 @@ import (
 )
 
 // ZonedTime preserva tanto el instante UTC como la zona IANA de origen para calendarios y eventos futuros.
+// Patrón 2 de persistencia: almacena el instante universal Y la intención local original.
 type ZonedTime struct {
 	UTC  DBTime `json:"utc"`
 	Zone string `json:"zone"`
@@ -24,10 +25,8 @@ func NewZonedTime(t time.Time, zoneName string) (ZonedTime, error) {
 	}
 
 	canonicalZone := loc.String()
-	tInLoc := t.In(loc)
-
 	return ZonedTime{
-		UTC:  NewDBTime(tInLoc),
+		UTC:  NewDBTime(t),
 		Zone: canonicalZone,
 	}, nil
 }
@@ -35,13 +34,18 @@ func NewZonedTime(t time.Time, zoneName string) (ZonedTime, error) {
 // Local devuelve la fecha recalculada en la zona de origen según las reglas vigentes.
 func (z ZonedTime) Local() (time.Time, error) {
 	if z.Zone == "" {
-		return z.UTC.Time, nil
+		return z.UTC.Time(), nil
 	}
 	loc, err := zone.LoadLocation(z.Zone)
 	if err != nil {
-		return z.UTC.Time, err
+		return z.UTC.Time(), err
 	}
-	return z.UTC.Time.In(loc), nil
+	return z.UTC.Time().In(loc), nil
+}
+
+// IsZero informa si el ZonedTime es el instante cero.
+func (z ZonedTime) IsZero() bool {
+	return z.UTC.IsZero()
 }
 
 // Value implementa driver.Valuer serializando ZonedTime como JSON string para SQL.
@@ -84,17 +88,31 @@ func (z *ZonedTime) unmarshalString(s string) error {
 		return nil
 	}
 
+	// JSON object: {"utc": "...", "zone": "..."}
 	if strings.HasPrefix(trimmed, "{") {
-		type alias ZonedTime
-		var aux alias
-		if err := json.Unmarshal([]byte(trimmed), &aux); err == nil {
-			*z = ZonedTime(aux)
-			return nil
+		// Usar struct auxiliar temporal con time.Time para evitar recursión en DBTime.
+		var aux struct {
+			UTC  string `json:"utc"`
+			Zone string `json:"zone"`
 		}
+		if err := json.Unmarshal([]byte(trimmed), &aux); err != nil {
+			return fmt.Errorf("types: JSON inválido para ZonedTime: %w", err)
+		}
+		var dbT DBTime
+		if err := dbT.parseString(aux.UTC); err != nil {
+			return fmt.Errorf("types: campo utc inválido en ZonedTime: %w", err)
+		}
+		// Validación explícita: si el campo utc está vacío es un error, no silencio.
+		if dbT.IsZero() && aux.UTC != "" {
+			return fmt.Errorf("types: campo utc resultó en zero value para ZonedTime: '%s'", aux.UTC)
+		}
+		z.UTC = dbT
+		z.Zone = aux.Zone
+		return nil
 	}
 
-	parts := strings.Split(trimmed, "|")
-	if len(parts) == 2 {
+	// Formato pipe: "2026-09-01T15:00:00Z|America/Lima"
+	if parts := strings.Split(trimmed, "|"); len(parts) == 2 {
 		if t, err := time.Parse(time.RFC3339, parts[0]); err == nil {
 			z.UTC = NewDBTime(t)
 			z.Zone = parts[1]
@@ -102,6 +120,7 @@ func (z *ZonedTime) unmarshalString(s string) error {
 		}
 	}
 
+	// Fallback: RFC3339 sin zona explícita
 	if t, err := time.Parse(time.RFC3339, trimmed); err == nil {
 		z.UTC = NewDBTime(t)
 		z.Zone = "UTC"

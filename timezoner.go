@@ -19,14 +19,14 @@ import (
 
 // Re-exportación de tipos principales para conveniencia del consumidor de la librería.
 type (
-	DBTime          = types.DBTime
-	ZonedTime       = types.ZonedTime
-	ZoneDetail      = zone.Detail
-	ZoneSnapshot    = zone.Snapshot
-	UserTime        = project.UserTime
-	OverlapRequest  = overlap.Request
-	OverlapSlot     = overlap.Slot
-	WorkingHours    = overlap.WorkingHours
+	DBTime         = types.DBTime
+	ZonedTime      = types.ZonedTime
+	ZoneDetail     = zone.Detail
+	ZoneSnapshot   = zone.Snapshot
+	UserTime       = project.UserTime
+	OverlapRequest = overlap.Request
+	OverlapSlot    = overlap.Slot
+	WorkingHours   = overlap.WorkingHours
 )
 
 // Re-exportación de errores centinela.
@@ -38,50 +38,59 @@ var (
 	ErrInvalidTimeFormat = ingest.ErrInvalidInput
 )
 
-// Re-exportación de constructores rápidos.
+// Re-exportación de constructores y funciones de módulos internos.
+// Todas son funciones nombradas, no variables de tipo func (evita reemplazos externos peligrosos).
 var (
-	NewDBTime       = types.NewDBTime
-	NowDBTime       = types.NowDBTime
-	NewZonedTime    = types.NewZonedTime
-	ZonedFromLocal  = func(dateStr, zoneName string) (ZonedTime, error) {
-		utcParsed, err := ingest.FromString(dateStr, zoneName)
-		if err != nil {
-			return ZonedTime{}, err
-		}
-		canonical, err := zone.Normalize(zoneName)
-		if err != nil {
-			canonical = "UTC"
-		}
-		return ZonedTime{UTC: types.NewDBTime(utcParsed), Zone: canonical}, nil
-	}
-	IngestNow       = ingest.Now
-	IngestTime      = ingest.FromTime
-	IngestFromLocal = ingest.FromLocal
-	IngestFromString= ingest.FromString
-	IngestFromUnix  = ingest.FromUnix
-	ProjectForUser  = project.ForUser
-	ProjectFormat   = project.Format
+	NewDBTime            = types.NewDBTime
+	NowDBTime            = types.NowDBTime
+	NewZonedTime         = types.NewZonedTime
+	IngestNow            = ingest.Now
+	IngestTime           = ingest.FromTime
+	IngestFromLocal      = ingest.FromLocal
+	IngestFromString     = ingest.FromString
+	IngestFromUnix       = ingest.FromUnix
+	ProjectForUser       = project.ForUser
+	ProjectFormat        = project.Format
 	ProjectBatchForUsers = project.BatchForUsers
-	LoadLocation    = zone.LoadLocation
-	IsValid         = zone.IsValid
-	NormalizeZone   = zone.Normalize
-	RegisterAlias   = zone.RegisterAlias
-	CommonZones     = zone.CommonZones
-	FormatOffset    = zone.FormatOffset
-	GetZoneInfo     = zone.GetInfo
-	IsDST           = zone.IsDST
-	Difference      = zone.Difference
-	IsWeekend       = calendar.IsWeekend
-	IsWeekday       = calendar.IsWeekday
-	AddBusinessDays = calendar.AddBusinessDays
-	StartOfDay      = calendar.StartOfDay
-	EndOfDay        = calendar.EndOfDay
-	StartOfMonth    = calendar.StartOfMonth
-	EndOfMonth      = calendar.EndOfMonth
-	DaysInMonth     = calendar.DaysInMonth
-	Humanize        = humanize.Humanize
-	HumanizeEn      = humanize.HumanizeEn
+	LoadLocation         = zone.LoadLocation
+	IsValid              = zone.IsValid
+	NormalizeZone        = zone.Normalize
+	RegisterAlias        = zone.RegisterAlias
+	CommonZones          = zone.CommonZones
+	FormatOffset         = zone.FormatOffset
+	GetZoneInfo          = zone.GetInfo
+	IsDST                = zone.IsDST
+	Difference           = zone.Difference
+	IsWeekend            = calendar.IsWeekend
+	IsWeekday            = calendar.IsWeekday
+	AddBusinessDays      = calendar.AddBusinessDays
+	StartOfDay           = calendar.StartOfDay
+	EndOfDay             = calendar.EndOfDay
+	StartOfMonth         = calendar.StartOfMonth
+	EndOfMonth           = calendar.EndOfMonth
+	StartOfWeek          = calendar.StartOfWeek
+	EndOfWeek            = calendar.EndOfWeek
+	StartOfYear          = calendar.StartOfYear
+	EndOfYear            = calendar.EndOfYear
+	DaysInMonth          = calendar.DaysInMonth
+	Humanize             = humanize.Humanize
+	HumanizeEn           = humanize.HumanizeEn
+	SupportedLayouts     = ingest.SupportedLayouts
 )
+
+// ZonedFromLocal parsea una fecha local expresada como string y la convierte en ZonedTime.
+// Es una función nombrada (no una variable func) para evitar reemplazos externos peligrosos.
+func ZonedFromLocal(dateStr, zoneName string) (ZonedTime, error) {
+	utcParsed, err := ingest.FromString(dateStr, zoneName)
+	if err != nil {
+		return ZonedTime{}, err
+	}
+	canonical, err := zone.Normalize(zoneName)
+	if err != nil {
+		canonical = "UTC"
+	}
+	return ZonedTime{UTC: types.NewDBTime(utcParsed), Zone: canonical}, nil
+}
 
 // Convert convierte un time.Time a la zona horaria destino.
 func Convert(t time.Time, toZone string) (time.Time, error) {
@@ -144,6 +153,7 @@ func Compare(at time.Time, zones ...string) ([]ZoneSnapshot, error) {
 			Zone:            loc.String(),
 			Abbreviation:    abbr,
 			Time:            tInLoc,
+			TimeUTC:         at.UTC().Format(time.RFC3339Nano),
 			Formatted:       tInLoc.Format("2006-01-02 15:04:05 MST"),
 			OffsetFormatted: zone.FormatOffset(offset),
 			IsDST:           isDst,
@@ -198,7 +208,7 @@ func (tp *TimePoint) ToUTC() *TimePoint {
 	return tp
 }
 
-// AddBusinessDays añade n días laborables (lunes a viernes).
+// AddBusinessDays añade n días laborables (lunes a viernes), preservando la hora local ante cambios DST.
 func (tp *TimePoint) AddBusinessDays(days int) *TimePoint {
 	if tp.err != nil {
 		return tp
@@ -243,6 +253,24 @@ func (tp *TimePoint) EndOfMonth() *TimePoint {
 	return tp
 }
 
+// StartOfWeek mueve el instante al inicio del lunes de la semana actual.
+func (tp *TimePoint) StartOfWeek() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = calendar.StartOfWeek(tp.t)
+	return tp
+}
+
+// EndOfWeek mueve el instante al final del domingo de la semana actual.
+func (tp *TimePoint) EndOfWeek() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = calendar.EndOfWeek(tp.t)
+	return tp
+}
+
 // Humanize devuelve una representación relativa humana en español ("hace 5 minutos", "en 2 días").
 func (tp *TimePoint) Humanize(relativeTo ...time.Time) (string, error) {
 	if tp.err != nil {
@@ -259,8 +287,8 @@ func (tp *TimePoint) HumanizeEn(relativeTo ...time.Time) (string, error) {
 	return humanize.HumanizeEn(tp.t, relativeTo...), nil
 }
 
-// DBTime convierte el TimePoint en una estructura DBTime para persistencia SQL y JSON.
-func (tp *TimePoint) DBTime() (DBTime, error) {
+// AsDBTime convierte el TimePoint en una estructura DBTime para persistencia SQL y JSON.
+func (tp *TimePoint) AsDBTime() (DBTime, error) {
 	if tp.err != nil {
 		return DBTime{}, tp.err
 	}
@@ -275,8 +303,8 @@ func (tp *TimePoint) MustDBTime() DBTime {
 	return types.NewDBTime(tp.t)
 }
 
-// ZonedTime convierte el TimePoint en un ZonedTime asociando la zona especificada.
-func (tp *TimePoint) ZonedTime(zoneName string) (ZonedTime, error) {
+// AsZonedTime convierte el TimePoint en un ZonedTime asociando la zona especificada.
+func (tp *TimePoint) AsZonedTime(zoneName string) (ZonedTime, error) {
 	if tp.err != nil {
 		return ZonedTime{}, tp.err
 	}
@@ -325,4 +353,9 @@ func (tp *TimePoint) Info() (ZoneDetail, error) {
 		return ZoneDetail{}, tp.err
 	}
 	return zone.GetInfo(tp.t.Location().String(), tp.t)
+}
+
+// Err retorna el error acumulado en la cadena fluida, si lo hubiera.
+func (tp *TimePoint) Err() error {
+	return tp.err
 }

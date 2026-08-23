@@ -16,8 +16,8 @@ var (
 	ErrEmptyDateString = errors.New("ingest: la cadena de fecha no puede estar vacía")
 )
 
-// SupportedLayouts contiene los formatos de fecha más comunes aceptados por APIs y frontends.
-var SupportedLayouts = []string{
+// supportedLayouts es privado e inmutable: no puede ser modificado externamente (ISO/IEC 5055).
+var supportedLayouts = []string{
 	time.RFC3339Nano,
 	time.RFC3339,
 	"2006-01-02T15:04:05",
@@ -27,6 +27,14 @@ var SupportedLayouts = []string{
 	"02/01/2006 15:04:05",
 	"02/01/2006 15:04",
 	"02/01/2006",
+}
+
+// SupportedLayouts retorna una copia de los layouts soportados para lectura externa segura.
+// El consumidor puede leer pero NO puede modificar el estado interno del paquete.
+func SupportedLayouts() []string {
+	layouts := make([]string, len(supportedLayouts))
+	copy(layouts, supportedLayouts)
+	return layouts
 }
 
 // Now devuelve el instante actual del sistema en UTC absoluto, limpio de reloj monotónico.
@@ -79,7 +87,7 @@ func FromString(dateStr, defaultZone string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("%w: zona por defecto inválida '%s'", zone.ErrInvalidZone, defaultZone)
 	}
 
-	for _, layout := range SupportedLayouts {
+	for _, layout := range supportedLayouts {
 		if parsed, err := time.ParseInLocation(layout, cleanStr, loc); err == nil {
 			return parsed.UTC().Round(0), nil
 		}

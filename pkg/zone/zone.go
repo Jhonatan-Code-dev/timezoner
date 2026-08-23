@@ -14,82 +14,86 @@ var (
 	ErrEmptyZoneName = errors.New("zone: el nombre de la zona horaria no puede estar vacío")
 	// ErrInvalidZone se retorna cuando la zona IANA o alias no existe.
 	ErrInvalidZone = errors.New("zone: zona horaria no válida")
-
-	locationCache sync.Map
-
-	// zoneAliases mapea abreviaciones comunes y sinónimos a identificadores IANA válidos.
-	zoneAliases = map[string]string{
-		"UTC":    "UTC",
-		"GMT":    "Etc/GMT",
-		"EST":    "America/New_York",
-		"EDT":    "America/New_York",
-		"CST":    "America/Chicago",
-		"CDT":    "America/Chicago",
-		"MST":    "America/Denver",
-		"MDT":    "America/Denver",
-		"PST":    "America/Los_Angeles",
-		"PDT":    "America/Los_Angeles",
-		"PET":    "America/Lima",
-		"COT":    "America/Bogota",
-		"CLT":    "America/Santiago",
-		"ART":    "America/Argentina/Buenos_Aires",
-		"BRT":    "America/Sao_Paulo",
-		"CET":    "Europe/Paris",
-		"CEST":   "Europe/Paris",
-		"WET":    "Europe/Lisbon",
-		"EET":    "Europe/Athens",
-		"EEST":   "Europe/Athens",
-		"BST":    "Europe/London",
-		"JST":    "Asia/Tokyo",
-		"KST":    "Asia/Seoul",
-		"CST-CN": "Asia/Shanghai",
-		"IST":    "Asia/Kolkata",
-		"SGT":    "Asia/Singapore",
-		"AEST":   "Australia/Sydney",
-		"AEDT":   "Australia/Sydney",
-		"NZST":   "Pacific/Auckland",
-		"NZDT":   "Pacific/Auckland",
-	}
-
-	// CommonZonesList lista representativa de husos horarios IANA por región.
-	CommonZonesList = []string{
-		"UTC",
-		"Africa/Cairo",
-		"Africa/Johannesburg",
-		"Africa/Lagos",
-		"America/Argentina/Buenos_Aires",
-		"America/Bogota",
-		"America/Caracas",
-		"America/Chicago",
-		"America/Denver",
-		"America/Lima",
-		"America/Los_Angeles",
-		"America/Mexico_City",
-		"America/New_York",
-		"America/Santiago",
-		"America/Sao_Paulo",
-		"America/Toronto",
-		"Asia/Bangkok",
-		"Asia/Dubai",
-		"Asia/Hong_Kong",
-		"Asia/Jakarta",
-		"Asia/Kolkata",
-		"Asia/Seoul",
-		"Asia/Shanghai",
-		"Asia/Singapore",
-		"Asia/Tokyo",
-		"Australia/Melbourne",
-		"Australia/Sydney",
-		"Europe/Amsterdam",
-		"Europe/Berlin",
-		"Europe/London",
-		"Europe/Madrid",
-		"Europe/Paris",
-		"Europe/Rome",
-		"Pacific/Auckland",
-		"Pacific/Honolulu",
-	}
 )
+
+// locationCache almacena *time.Location resueltos, protegido por sync.Map (thread-safe).
+var locationCache sync.Map
+
+// aliasesMu protege zoneAliases contra escrituras y lecturas concurrentes (CWE-362).
+var aliasesMu sync.RWMutex
+
+// zoneAliases mapea abreviaciones comunes y sinónimos a identificadores IANA válidos.
+var zoneAliases = map[string]string{
+	"UTC":    "UTC",
+	"GMT":    "Etc/GMT",
+	"EST":    "America/New_York",
+	"EDT":    "America/New_York",
+	"CST":    "America/Chicago",
+	"CDT":    "America/Chicago",
+	"MST":    "America/Denver",
+	"MDT":    "America/Denver",
+	"PST":    "America/Los_Angeles",
+	"PDT":    "America/Los_Angeles",
+	"PET":    "America/Lima",
+	"COT":    "America/Bogota",
+	"CLT":    "America/Santiago",
+	"ART":    "America/Argentina/Buenos_Aires",
+	"BRT":    "America/Sao_Paulo",
+	"CET":    "Europe/Paris",
+	"CEST":   "Europe/Paris",
+	"WET":    "Europe/Lisbon",
+	"EET":    "Europe/Athens",
+	"EEST":   "Europe/Athens",
+	"BST":    "Europe/London",
+	"JST":    "Asia/Tokyo",
+	"KST":    "Asia/Seoul",
+	"CST-CN": "Asia/Shanghai",
+	"IST":    "Asia/Kolkata",
+	"SGT":    "Asia/Singapore",
+	"AEST":   "Australia/Sydney",
+	"AEDT":   "Australia/Sydney",
+	"NZST":   "Pacific/Auckland",
+	"NZDT":   "Pacific/Auckland",
+}
+
+// commonZonesList lista representativa de husos horarios IANA por región.
+var commonZonesList = []string{
+	"UTC",
+	"Africa/Cairo",
+	"Africa/Johannesburg",
+	"Africa/Lagos",
+	"America/Argentina/Buenos_Aires",
+	"America/Bogota",
+	"America/Caracas",
+	"America/Chicago",
+	"America/Denver",
+	"America/Lima",
+	"America/Los_Angeles",
+	"America/Mexico_City",
+	"America/New_York",
+	"America/Santiago",
+	"America/Sao_Paulo",
+	"America/Toronto",
+	"Asia/Bangkok",
+	"Asia/Dubai",
+	"Asia/Hong_Kong",
+	"Asia/Jakarta",
+	"Asia/Kolkata",
+	"Asia/Seoul",
+	"Asia/Shanghai",
+	"Asia/Singapore",
+	"Asia/Tokyo",
+	"Australia/Melbourne",
+	"Australia/Sydney",
+	"Europe/Amsterdam",
+	"Europe/Berlin",
+	"Europe/London",
+	"Europe/Madrid",
+	"Europe/Paris",
+	"Europe/Rome",
+	"Pacific/Auckland",
+	"Pacific/Honolulu",
+}
 
 // Detail describe la información completa de una zona horaria en un instante de tiempo.
 type Detail struct {
@@ -103,13 +107,16 @@ type Detail struct {
 }
 
 // Snapshot representa la hora correspondiente en una zona específica para una fecha base.
+// MarshalJSON normaliza siempre el campo Time a UTC para garantizar determinismo entre entornos.
 type Snapshot struct {
-	Time            time.Time `json:"time"`
+	Time            time.Time `json:"-"`
 	Zone            string    `json:"zone"`
 	Abbreviation    string    `json:"abbreviation"`
 	Formatted       string    `json:"formatted"`
 	OffsetFormatted string    `json:"offset_formatted"`
 	IsDST           bool      `json:"is_dst"`
+	// TimeUTC expone el instante normalizado para serialización segura.
+	TimeUTC string `json:"time_utc"`
 }
 
 // LoadLocation carga un *time.Location con soporte de caché en memoria y resolución de alias.
@@ -119,7 +126,14 @@ func LoadLocation(zoneName string) (*time.Location, error) {
 		return nil, ErrEmptyZoneName
 	}
 
-	if canonical, ok := zoneAliases[strings.ToUpper(name)]; ok {
+	upper := strings.ToUpper(name)
+
+	// Lectura concurrente segura del mapa de alias.
+	aliasesMu.RLock()
+	canonical, aliasOK := zoneAliases[upper]
+	aliasesMu.RUnlock()
+
+	if aliasOK {
 		name = canonical
 	}
 
@@ -151,19 +165,26 @@ func Normalize(zoneName string) (string, error) {
 	return loc.String(), nil
 }
 
-// RegisterAlias permite registrar alias personalizados en tiempo de ejecución.
+// RegisterAlias permite registrar alias personalizados en tiempo de ejecución de forma concurrente.
 func RegisterAlias(alias, ianaZone string) error {
 	if !IsValid(ianaZone) {
 		return fmt.Errorf("%w: zona destino '%s'", ErrInvalidZone, ianaZone)
 	}
-	zoneAliases[strings.ToUpper(strings.TrimSpace(alias))] = ianaZone
+	key := strings.ToUpper(strings.TrimSpace(alias))
+
+	// Escritura segura con lock exclusivo (CWE-362: Race Condition corregido).
+	aliasesMu.Lock()
+	zoneAliases[key] = ianaZone
+	aliasesMu.Unlock()
+
 	return nil
 }
 
-// CommonZones retorna una copia de la lista de zonas comunes.
+// CommonZones retorna una copia inmutable de la lista de zonas comunes.
+// Retorna una copia nueva para evitar que el consumidor modifique el estado interno.
 func CommonZones() []string {
-	result := make([]string, len(CommonZonesList))
-	copy(result, CommonZonesList)
+	result := make([]string, len(commonZonesList))
+	copy(result, commonZonesList)
 	return result
 }
 
