@@ -1,0 +1,29 @@
+# Binaries and compiled outputs
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test and coverage artifacts
+*.out
+*.prof
+*.test
+coverage
+coverage.out
+cpu.prof
+mem.prof
+trace.out
+mutex.prof
+
+# Internal Agentic / IDE tooling (kept local on machine)
+.agents/
+.gemini/
+.idea/
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
