@@ -1,18 +1,27 @@
-# Reglas de Calidad y Estándares de Ingeniería Top-Tier en Go
+# Estándares de Arquitectura e Ingeniería Go (Top-Tier FAANG)
 
-Todas las contribuciones, refactorizaciones y adiciones en este proyecto deben cumplir estrictamente con los siguientes estándares de nivel Senior Principal:
+Este documento define las reglas de observancia obligatoria para cualquier desarrollo, modificación, refactorización o auditoría en el repositorio **timezoner**.
 
-1. **Cero Dependencias Externas**: Todo el código de la librería debe usar exclusivamente la biblioteca estándar de Go (`net`, `time`, `sync`, `fmt`, etc.).
-2. **Propiedad Intelectual y Licencia**: El código es autoría exclusiva de **Jhonatan**. No alterar avisos de copyright ni la licencia propietaria.
-3. **Cero Errores y Advertencias de Linter**: Todo archivo debe pasar `go vet ./...` y formateo estricto `gofmt -s -w .`.
-4. **Thread-Safety Obligatorio**: Todas las estructuras y funciones públicas compartidas deben ser concurrent-safe.
-5. **Pruebas y Cobertura**:
-   - Todo cambio o nueva función debe incluir pruebas unitarias con cobertura >= 85%.
-   - Incluir pruebas de concurrencia y edge cases temporales (bisiestos, DST, solsticios).
-   - Incluir ejemplos ejecutables en `examples_test.go` con `// Output:`.
-6. **Rendimiento Extremo**:
-   - Minimizar o eliminar alocaciones de memoria en heap en rutas calientes.
-   - Prealocar slices con `make([]T, 0, cap)`.
-   - Utilizar caché concurrente para cargas de `time.Location`.
-7. **Documentación Godoc Impecable**:
-   - Cada tipo, función o método público debe tener un comentario descriptivo comenzando con su propio identificador.
+---
+
+## 1. Arquitectura Modular Limpia (Modular Monolith)
+- **Dominio Desacoplado en `pkg/`**: Cada funcionalidad especializada (`pkg/zone`, `pkg/types`, `pkg/calendar`, `pkg/humanize`, `pkg/ingest`, `pkg/project`, `pkg/overlap`) es un paquete autónomo con alta cohesión y bajo acoplamiento.
+- **Fachada Pública Unificada**: El paquete raíz `timezoner` expone la Fluent API (`timezoner.At()`, `timezoner.Now()`) y constructores principales como punto de entrada único para los consumidores de la librería.
+- **Regla de Dependencia (DIP)**: Los módulos de dominio no dependen de infraestructura externa. El árbol de dependencias internas debe ser un grafo acíclico dirigido (DAG).
+
+## 2. Inmutabilidad y Protección de Estado
+- **Cero Variables Globales Mutables Exportadas**: Ningún slice, mapa ni variable de paquete exportada puede ser modificable externamente.
+- **Retorno de Copias Defensivas**: Toda función que exponga listas o catálogos internos (como `CommonZones()` o `SupportedLayouts()`) debe retornar una copia independiente (`copy()`).
+- **Encapsulación de Tipos de Persistencia**: Tipos como `DBTime` y `ZonedTime` no deben embeber `time.Time` directamente; deben usar campos privados con accesores controlados (`.Time()`, `.UTC()`, `.IsZero()`) para prevenir mutaciones que corrompan la zona horaria en la base de datos.
+- **Funciones Nombradas**: No declarar funciones exportadas como variables lambda `var Func = func()`; siempre usar declaraciones de función estándar `func Func()`.
+
+## 3. Concurrencia y Seguridad (CWE-362)
+- **Thread-Safety Total**: Toda función pública, estructura compartida y mecanismo de caché debe ser 100% seguro para ejecución concurrente con goroutines masivas.
+- **Protección de Mapas**: Los mapas globales deben protegerse obligatoriamente con `sync.RWMutex` (lecturas con `RLock()`, escrituras con `Lock()`) o `sync.Map`.
+- **Cero Fugas de Goroutines**: Cualquier proceso asíncrono debe tener un ciclo de vida delimitado y cancelable mediante `context.Context`.
+
+## 4. Rendimiento y Cero Alocaciones Innecesarias
+- **Optimización de Rutas Críticas**: Métodos de alta frecuencia (`NewDBTime`, `LoadLocation` en caché, conversiones) deben ejecutar en sub-microsegundos con $\le 1$ alocación en el heap.
+- **Prealocación de Memoria**: Siempre que se conozca la longitud o capacidad de una colección, inicializar con `make([]T, 0, cap)`.
+- **Caché en Memoria**: Mantener caché concurrente para resolución de `*time.Location`.
+- **Evidencia Empírica**: Toda optimización de rendimiento debe ser validada con benchmarks reproducibles (`go test -bench=. -benchmem`).
