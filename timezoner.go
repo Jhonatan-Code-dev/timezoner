@@ -364,6 +364,92 @@ func (tp *TimePoint) In(zoneName string) *TimePoint {
 	return tp
 }
 
+// ToUTC convierte el TimePoint a la hora global UTC.
+func (tp *TimePoint) ToUTC() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = tp.t.UTC().Round(0)
+	return tp
+}
+
+// AddBusinessDays añade n días laborables (lunes a viernes).
+func (tp *TimePoint) AddBusinessDays(days int) *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = AddBusinessDays(tp.t, days)
+	return tp
+}
+
+// StartOfDay mueve el instante al inicio del día (00:00:00).
+func (tp *TimePoint) StartOfDay() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = StartOfDay(tp.t)
+	return tp
+}
+
+// EndOfDay mueve el instante al final del día (23:59:59.999999999).
+func (tp *TimePoint) EndOfDay() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = EndOfDay(tp.t)
+	return tp
+}
+
+// StartOfMonth mueve el instante al inicio del primer día del mes.
+func (tp *TimePoint) StartOfMonth() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = StartOfMonth(tp.t)
+	return tp
+}
+
+// EndOfMonth mueve el instante al final del último día del mes.
+func (tp *TimePoint) EndOfMonth() *TimePoint {
+	if tp.err != nil {
+		return tp
+	}
+	tp.t = EndOfMonth(tp.t)
+	return tp
+}
+
+// Humanize devuelve una representación relativa humana en español ("hace 5 minutos", "en 2 días").
+func (tp *TimePoint) Humanize(relativeTo ...time.Time) (string, error) {
+	if tp.err != nil {
+		return "", tp.err
+	}
+	return Humanize(tp.t, relativeTo...), nil
+}
+
+// HumanizeEn devuelve una representación relativa humana en inglés ("5 minutes ago", "in 2 days").
+func (tp *TimePoint) HumanizeEn(relativeTo ...time.Time) (string, error) {
+	if tp.err != nil {
+		return "", tp.err
+	}
+	return HumanizeEn(tp.t, relativeTo...), nil
+}
+
+// DBTime convierte el TimePoint en una estructura DBTime para persistencia SQL y JSON.
+func (tp *TimePoint) DBTime() (DBTime, error) {
+	if tp.err != nil {
+		return DBTime{}, tp.err
+	}
+	return NewDBTime(tp.t), nil
+}
+
+// MustDBTime devuelve el DBTime o produce pánico si hubo un error.
+func (tp *TimePoint) MustDBTime() DBTime {
+	if tp.err != nil {
+		panic(tp.err)
+	}
+	return NewDBTime(tp.t)
+}
+
 // Time devuelve el time.Time subyacente y el error acumulado si lo hubiera.
 func (tp *TimePoint) Time() (time.Time, error) {
 	return tp.t, tp.err

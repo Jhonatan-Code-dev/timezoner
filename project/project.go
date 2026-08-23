@@ -19,8 +19,8 @@ type UserTime struct {
 	Abbreviation    string        `json:"abbreviation"`      // 16 bytes
 	Formatted       string        `json:"formatted"`         // 16 bytes
 	ISO8601         string        `json:"iso8601"`           // 16 bytes
-	OffsetFormatted string        `json:"offset_formatted"` // 16 bytes
-	OffsetSeconds   int           `json:"offset_seconds"`   // 8 bytes
+	OffsetFormatted string        `json:"offset_formatted"`  // 16 bytes
+	OffsetSeconds   int           `json:"offset_seconds"`    // 8 bytes
 	IsDST           bool          `json:"is_dst"`            // 1 byte
 }
 

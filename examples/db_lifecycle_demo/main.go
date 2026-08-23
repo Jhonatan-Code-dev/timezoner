@@ -29,11 +29,11 @@ func main() {
 	fmt.Println("\n3. CONSULTA Y PROYECCIÓN POR USUARIOS (Módulo project):")
 
 	viewers := []string{
-		"America/Lima",        // Quien creó el evento
-		"America/New_York",    // Participante en NY
-		"Europe/Madrid",       // Participante en España
-		"Asia/Tokyo",          // Participante en Japón
-		"Asia/Kolkata",        // Participante en India (Offset +05:30)
+		"America/Lima",     // Quien creó el evento
+		"America/New_York", // Participante en NY
+		"Europe/Madrid",    // Participante en España
+		"Asia/Tokyo",       // Participante en Japón
+		"Asia/Kolkata",     // Participante en India (Offset +05:30)
 	}
 
 	projections, err := project.BatchForUsers(dbReadyUTC, viewers)

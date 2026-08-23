@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	_ "time/tzdata" // Embebe la base de datos IANA completa en el binario para portabilidad total (Windows, Alpine, Scratch)
 )
 
 var (
