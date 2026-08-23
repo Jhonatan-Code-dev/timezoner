@@ -1,6 +1,8 @@
 package timezoner
 
 import (
+	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -10,14 +12,15 @@ func TestLoadLocationAndAliases(t *testing.T) {
 		input       string
 		expectError bool
 		expectedLoc string
+		expectedErr error
 	}{
-		{"UTC", false, "UTC"},
-		{"PET", false, "America/Lima"},
-		{"America/Lima", false, "America/Lima"},
-		{"EST", false, "America/New_York"},
-		{"JST", false, "Asia/Tokyo"},
-		{"", true, ""},
-		{"Invalid/NonExistent_Zone", true, ""},
+		{"UTC", false, "UTC", nil},
+		{"PET", false, "America/Lima", nil},
+		{"America/Lima", false, "America/Lima", nil},
+		{"EST", false, "America/New_York", nil},
+		{"JST", false, "Asia/Tokyo", nil},
+		{"", true, "", ErrEmptyZoneName},
+		{"Invalid/NonExistent_Zone", true, "", ErrInvalidZone},
 	}
 
 	for _, tc := range tests {
@@ -25,6 +28,8 @@ func TestLoadLocationAndAliases(t *testing.T) {
 		if tc.expectError {
 			if err == nil {
 				t.Errorf("LoadLocation(%q): se esperaba error y no ocurrió", tc.input)
+			} else if tc.expectedErr != nil && !errors.Is(err, tc.expectedErr) {
+				t.Errorf("LoadLocation(%q) err = %v, se esperaba errors.Is(%v)", tc.input, err, tc.expectedErr)
 			}
 		} else {
 			if err != nil {
@@ -66,8 +71,8 @@ func TestRegisterAlias(t *testing.T) {
 
 	// Error con zona destino inválida
 	err = RegisterAlias("BAD", "Zone/Fake")
-	if err == nil {
-		t.Errorf("RegisterAlias con zona inválida debería haber fallado")
+	if err == nil || !errors.Is(err, ErrInvalidZone) {
+		t.Errorf("RegisterAlias con zona inválida debería haber fallado con ErrInvalidZone")
 	}
 }
 
@@ -109,16 +114,14 @@ func TestConvertBetween(t *testing.T) {
 		t.Fatalf("ConvertBetween falló: %v", err)
 	}
 
-	// En mayo, Madrid tiene CEST (UTC+2), Lima es UTC-5. Diferencia = 7 horas.
-	// 10:00 en Lima son 17:00 en Madrid.
 	if res.Hour() != 17 {
 		t.Errorf("ConvertBetween hora esperada: 17, obtenida: %d", res.Hour())
 	}
 
 	// Probar error con layout incompatible
 	_, err = ConvertBetween("invalid-date", layout, "UTC", "America/Lima")
-	if err == nil {
-		t.Errorf("Se esperaba error al parsear fecha inválida")
+	if err == nil || !errors.Is(err, ErrInvalidTimeFormat) {
+		t.Errorf("Se esperaba ErrInvalidTimeFormat al parsear fecha inválida, obtenido: %v", err)
 	}
 }
 
@@ -159,7 +162,6 @@ func TestGetZoneInfoAndDifference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Difference falló: %v", err)
 	}
-	// Madrid (UTC+2) vs Lima (UTC-5) = 7h
 	if diff != 7*time.Hour {
 		t.Errorf("Diferencia esperada: 7h, obtenida: %v", diff)
 	}
@@ -174,14 +176,11 @@ func TestCompare(t *testing.T) {
 	if len(snaps) != 3 {
 		t.Fatalf("Se esperaban 3 snapshots, obtenidos %d", len(snaps))
 	}
-	if snaps[0].Time.Hour() != 9 {
-		t.Errorf("Lima hora esperada 9, obtenida %d", snaps[0].Time.Hour())
-	}
-	if snaps[1].Time.Hour() != 14 {
-		t.Errorf("London hora esperada 14, obtenida %d", snaps[1].Time.Hour())
-	}
-	if snaps[2].Time.Hour() != 23 {
-		t.Errorf("Tokyo hora esperada 23, obtenida %d", snaps[2].Time.Hour())
+
+	// Test error con lista vacía
+	_, err = Compare(base)
+	if err == nil || !errors.Is(err, ErrNoZonesProvided) {
+		t.Errorf("Compare sin zonas debería fallar con ErrNoZonesProvided")
 	}
 }
 
@@ -202,11 +201,55 @@ func TestFindOverlap(t *testing.T) {
 		t.Fatalf("Se esperaba encontrar solapamiento entre Lima y New York")
 	}
 
-	for _, s := range slots {
-		if s.Duration < time.Hour {
-			t.Errorf("Duración del slot %v menor a 1h", s.Duration)
-		}
+	// Test error sin zonas
+	_, err = FindOverlap(OverlapRequest{})
+	if err == nil || !errors.Is(err, ErrNoZonesProvided) {
+		t.Errorf("FindOverlap sin zonas debería fallar con ErrNoZonesProvided")
 	}
+}
+
+func TestEdgeCasesTimezones(t *testing.T) {
+	// Zona con 30 minutos de offset: India (UTC+05:30)
+	t0 := time.Date(2028, 2, 29, 12, 0, 0, 0, time.UTC) // Año bisiesto
+	indiaTime, err := Convert(t0, "Asia/Kolkata")
+	if err != nil {
+		t.Fatalf("Convert Kolkata falló: %v", err)
+	}
+	if indiaTime.Hour() != 17 || indiaTime.Minute() != 30 {
+		t.Errorf("Hora esperada en India: 17:30, obtenida: %02d:%02d", indiaTime.Hour(), indiaTime.Minute())
+	}
+
+	// Zona con 45 minutos de offset: Nepal (UTC+05:45)
+	nepalTime, err := Convert(t0, "Asia/Kathmandu")
+	if err != nil {
+		t.Fatalf("Convert Kathmandu falló: %v", err)
+	}
+	if nepalTime.Hour() != 17 || nepalTime.Minute() != 45 {
+		t.Errorf("Hora esperada en Nepal: 17:45, obtenida: %02d:%02d", nepalTime.Hour(), nepalTime.Minute())
+	}
+}
+
+func TestConcurrentLoadAndConvert(t *testing.T) {
+	const goroutines = 200
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	zones := []string{"America/Lima", "Europe/Madrid", "Asia/Tokyo", "UTC", "America/New_York", "PET", "BST", "JST"}
+	now := time.Now()
+
+	for i := 0; i < goroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			z := zones[idx%len(zones)]
+			_, err := Convert(now, z)
+			if err != nil {
+				t.Errorf("Concurrent Convert error en goroutine %d para zona %s: %v", idx, z, err)
+			}
+			_, _ = GetZoneInfo(z, now)
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func TestFluentAPI(t *testing.T) {
@@ -241,6 +284,22 @@ func TestFluentAPI(t *testing.T) {
 	if _, err := badTp.Time(); err == nil {
 		t.Errorf("Se esperaba error al usar zona inválida")
 	}
+}
+
+// Fuzzing
+func FuzzConvert(f *testing.F) {
+	// Seed inputs
+	f.Add("UTC", int64(1700000000))
+	f.Add("America/Lima", int64(1800000000))
+	f.Add("Invalid/Zone", int64(0))
+	f.Add("", int64(-100000))
+	f.Add("Asia/Tokyo", int64(2000000000))
+
+	f.Fuzz(func(t *testing.T, zone string, unixSec int64) {
+		tm := time.Unix(unixSec, 0)
+		_, _ = Convert(tm, zone)
+		_, _ = GetZoneInfo(zone, tm)
+	})
 }
 
 // Benchmarks

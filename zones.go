@@ -88,7 +88,7 @@ var (
 func LoadLocation(zoneName string) (*time.Location, error) {
 	name := strings.TrimSpace(zoneName)
 	if name == "" {
-		return nil, fmt.Errorf("timezoner: el nombre de la zona horaria no puede estar vacío")
+		return nil, ErrEmptyZoneName
 	}
 
 	// Revisar alias
@@ -103,7 +103,7 @@ func LoadLocation(zoneName string) (*time.Location, error) {
 
 	loc, err := time.LoadLocation(name)
 	if err != nil {
-		return nil, fmt.Errorf("timezoner: zona horaria no válida '%s': %w", zoneName, err)
+		return nil, fmt.Errorf("%w: '%s'", ErrInvalidZone, zoneName)
 	}
 
 	locationCache.Store(name, loc)
@@ -125,10 +125,10 @@ func NormalizeZone(zoneName string) (string, error) {
 	return loc.String(), nil
 }
 
-// RegisterAlias permite a los proyectos consumidores registrar alias personalizados.
+// RegisterAlias permite a los proyectos consumidores registrar alias personalizados de forma segura.
 func RegisterAlias(alias, ianaZone string) error {
 	if !IsValid(ianaZone) {
-		return fmt.Errorf("timezoner: la zona IANA destino '%s' no es válida", ianaZone)
+		return fmt.Errorf("%w: zona destino '%s'", ErrInvalidZone, ianaZone)
 	}
 	zoneAliases[strings.ToUpper(strings.TrimSpace(alias))] = ianaZone
 	return nil

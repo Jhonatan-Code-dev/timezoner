@@ -1,30 +1,45 @@
-// Package timezoner proporciona utilidades robustas e idiomáticas para la manipulación,
-// conversión, comparación y planificación de horarios entre diferentes zonas horarias IANA.
+// Package timezoner proporciona utilidades robustas, idiomáticas y de alto rendimiento
+// para la manipulación, conversión, comparación y planificación de horarios entre diferentes
+// zonas horarias IANA.
 //
-// Diseñado para ser importado como librería independiente en cualquier proyecto Go.
+// Creado por Jhonatan. Diseñado para ser importado como librería independiente y segura en cualquier proyecto Go.
 package timezoner
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
 
+// Errores centinela exportados para inspección con errors.Is / errors.As.
+var (
+	// ErrEmptyZoneName se retorna cuando se pasa un nombre de zona vacío.
+	ErrEmptyZoneName = errors.New("timezoner: el nombre de la zona horaria no puede estar vacío")
+	// ErrInvalidZone se retorna cuando la zona horaria IANA o alias no existe.
+	ErrInvalidZone = errors.New("timezoner: zona horaria no válida")
+	// ErrInvalidTimeFormat se retorna cuando una cadena no coincide con el layout proporcionado.
+	ErrInvalidTimeFormat = errors.New("timezoner: formato de tiempo inválido")
+	// ErrNoZonesProvided se retorna cuando no se especifica ninguna zona en operaciones grupales.
+	ErrNoZonesProvided = errors.New("timezoner: se requiere al menos una zona horaria")
+)
+
 // ZoneDetail describe la información completa de una zona horaria en un instante de tiempo.
+// Los campos están optimizados para alineación de memoria en procesadores de 64 bits.
 type ZoneDetail struct {
-	ZoneName        string        `json:"zone_name"`
-	Abbreviation    string        `json:"abbreviation"`
-	OffsetSeconds   int           `json:"offset_seconds"`
-	OffsetFormatted string        `json:"offset_formatted"`
-	IsDST           bool          `json:"is_dst"`
-	LocalTime       time.Time     `json:"local_time"`
-	DifferenceToUTC time.Duration `json:"difference_to_utc"`
+	LocalTime       time.Time     `json:"local_time"`        // 24 bytes
+	DifferenceToUTC time.Duration `json:"difference_to_utc"` // 8 bytes
+	ZoneName        string        `json:"zone_name"`         // 16 bytes
+	Abbreviation    string        `json:"abbreviation"`      // 16 bytes
+	OffsetFormatted string        `json:"offset_formatted"`  // 16 bytes
+	OffsetSeconds   int           `json:"offset_seconds"`    // 8 bytes
+	IsDST           bool          `json:"is_dst"`            // 1 byte
 }
 
 // ZoneSnapshot representa la hora correspondiente en una zona específica para una fecha base.
 type ZoneSnapshot struct {
+	Time            time.Time `json:"time"`
 	Zone            string    `json:"zone"`
 	Abbreviation    string    `json:"abbreviation"`
-	Time            time.Time `json:"time"`
 	Formatted       string    `json:"formatted"`
 	OffsetFormatted string    `json:"offset_formatted"`
 	IsDST           bool      `json:"is_dst"`
@@ -36,7 +51,7 @@ type WorkingHours struct {
 	EndHour   int `json:"end_hour"`   // 0-23
 }
 
-// DefaultWorkingHours devuelve el horario laboral habitual (09:00 a 17:00).
+// DefaultWorkingHours devuelve el horario laboral habitual estándar (09:00 a 17:00).
 func DefaultWorkingHours() WorkingHours {
 	return WorkingHours{StartHour: 9, EndHour: 17}
 }
@@ -71,17 +86,17 @@ func Convert(t time.Time, toZone string) (time.Time, error) {
 func ConvertBetween(timeStr, layout, fromZone, toZone string) (time.Time, error) {
 	fromLoc, err := LoadLocation(fromZone)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("fromZone error: %w", err)
+		return time.Time{}, fmt.Errorf("%w: origen '%s'", ErrInvalidZone, fromZone)
 	}
 
 	toLoc, err := LoadLocation(toZone)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("toZone error: %w", err)
+		return time.Time{}, fmt.Errorf("%w: destino '%s'", ErrInvalidZone, toZone)
 	}
 
 	parsed, err := time.ParseInLocation(layout, timeStr, fromLoc)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("timezoner: error al parsear tiempo '%s' con layout '%s': %w", timeStr, layout, err)
+		return time.Time{}, fmt.Errorf("%w: '%s' con layout '%s': %v", ErrInvalidTimeFormat, timeStr, layout, err)
 	}
 
 	return parsed.In(toLoc), nil
@@ -105,7 +120,7 @@ func FormatIn(t time.Time, zoneName, layout string) (string, error) {
 	return targetTime.Format(layout), nil
 }
 
-// FormatOffset devuelve el offset en formato legible como "+02:00" o "-05:00".
+// FormatOffset devuelve el offset en formato ISO 8601 legible como "+02:00" o "-05:00".
 func FormatOffset(offsetSeconds int) string {
 	sign := "+"
 	if offsetSeconds < 0 {
@@ -127,8 +142,7 @@ func GetZoneInfo(zoneName string, at time.Time) (ZoneDetail, error) {
 	localTime := at.In(loc)
 	abbr, offset := localTime.Zone()
 
-	// Detección de DST comparando con el offset estándar (calculado en solsticio/invierno)
-	// Comparamos el offset actual con enero y julio para verificar si hay DST activo
+	// Detección precisa de DST comparando con el offset estándar
 	jan := time.Date(at.Year(), time.January, 1, 12, 0, 0, 0, loc)
 	jul := time.Date(at.Year(), time.July, 1, 12, 0, 0, 0, loc)
 	_, janOff := jan.Zone()
@@ -144,13 +158,13 @@ func GetZoneInfo(zoneName string, at time.Time) (ZoneDetail, error) {
 	}
 
 	return ZoneDetail{
-		ZoneName:        loc.String(),
-		Abbreviation:    abbr,
-		OffsetSeconds:   offset,
-		OffsetFormatted: FormatOffset(offset),
-		IsDST:           isDST,
 		LocalTime:       localTime,
 		DifferenceToUTC: time.Duration(offset) * time.Second,
+		ZoneName:        loc.String(),
+		Abbreviation:    abbr,
+		OffsetFormatted: FormatOffset(offset),
+		OffsetSeconds:   offset,
+		IsDST:           isDST,
 	}, nil
 }
 
@@ -168,11 +182,11 @@ func IsDST(zoneName string, at time.Time) (bool, error) {
 func Difference(zoneA, zoneB string, at time.Time) (time.Duration, error) {
 	locA, err := LoadLocation(zoneA)
 	if err != nil {
-		return 0, fmt.Errorf("zoneA inválida: %w", err)
+		return 0, fmt.Errorf("%w: zoneA '%s'", ErrInvalidZone, zoneA)
 	}
 	locB, err := LoadLocation(zoneB)
 	if err != nil {
-		return 0, fmt.Errorf("zoneB inválida: %w", err)
+		return 0, fmt.Errorf("%w: zoneB '%s'", ErrInvalidZone, zoneB)
 	}
 
 	_, offsetA := at.In(locA).Zone()
@@ -184,7 +198,11 @@ func Difference(zoneA, zoneB string, at time.Time) (time.Duration, error) {
 
 // Compare genera una instantánea de cómo se refleja un instante 'at' en una lista de zonas horarias.
 func Compare(at time.Time, zones ...string) ([]ZoneSnapshot, error) {
-	var snapshots []ZoneSnapshot
+	if len(zones) == 0 {
+		return nil, ErrNoZonesProvided
+	}
+
+	snapshots := make([]ZoneSnapshot, 0, len(zones))
 
 	for _, z := range zones {
 		loc, err := LoadLocation(z)
@@ -214,7 +232,7 @@ func Compare(at time.Time, zones ...string) ([]ZoneSnapshot, error) {
 // indicadas se encuentran dentro de sus respectivas jornadas laborales.
 func FindOverlap(req OverlapRequest) ([]OverlapSlot, error) {
 	if len(req.Zones) == 0 {
-		return nil, fmt.Errorf("timezoner: se requiere al menos una zona horaria")
+		return nil, ErrNoZonesProvided
 	}
 
 	slotDur := req.SlotDuration
@@ -227,7 +245,6 @@ func FindOverlap(req OverlapRequest) ([]OverlapSlot, error) {
 		defHours = DefaultWorkingHours()
 	}
 
-	// Cargar ubicaciones y resolver horas de cada zona
 	type zoneRule struct {
 		name string
 		loc  *time.Location
@@ -262,7 +279,7 @@ func FindOverlap(req OverlapRequest) ([]OverlapSlot, error) {
 
 	for current := startOfDay; current.Before(endOfDay); current = current.Add(step) {
 		allMatch := true
-		zoneTimes := make(map[string]time.Time)
+		zoneTimes := make(map[string]time.Time, len(rules))
 
 		for _, r := range rules {
 			local := current.In(r.loc)
@@ -328,7 +345,7 @@ func At(t time.Time) *TimePoint {
 	return &TimePoint{t: t}
 }
 
-// Now crea un nuevo TimePoint con la hora actual.
+// Now crea un nuevo TimePoint con la hora actual del sistema.
 func Now() *TimePoint {
 	return &TimePoint{t: time.Now()}
 }
@@ -360,7 +377,7 @@ func (tp *TimePoint) MustTime() time.Time {
 	return tp.t
 }
 
-// Format formatea la hora en la zona actual.
+// Format formatea la hora en la zona actual del TimePoint.
 func (tp *TimePoint) Format(layout string) (string, error) {
 	if tp.err != nil {
 		return "", tp.err

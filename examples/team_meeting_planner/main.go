@@ -15,9 +15,9 @@ func main() {
 
 	targetDate := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
 	teamZones := []string{
-		"America/Lima",        // América del Sur
-		"America/New_York",    // Costa Este EE.UU.
-		"Europe/Madrid",       // Europa
+		"America/Lima",     // América del Sur
+		"America/New_York", // Costa Este EE.UU.
+		"Europe/Madrid",    // Europa
 	}
 
 	req := timezoner.OverlapRequest{
