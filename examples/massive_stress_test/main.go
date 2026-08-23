@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezoner"
 )
 
 func main() {

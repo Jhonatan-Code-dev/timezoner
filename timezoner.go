@@ -8,13 +8,13 @@ package timezoner
 import (
 	"time"
 
-	"timezoner/pkg/calendar"
-	"timezoner/pkg/humanize"
-	"timezoner/pkg/ingest"
-	"timezoner/pkg/overlap"
-	"timezoner/pkg/project"
-	"timezoner/pkg/types"
-	"timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/calendar"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/humanize"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/ingest"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/overlap"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/project"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/types"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
 )
 
 // Re-exportación de tipos principales para conveniencia del consumidor de la librería.

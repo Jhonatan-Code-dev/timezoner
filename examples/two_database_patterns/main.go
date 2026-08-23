@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezoner"
 )
 
 // PATRÓN 1: Pagos, Transacciones y Logs (90% de los casos) -> Solo UTC

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
 )
 
 // ZonedTime preserva tanto el instante UTC como la zona IANA de origen para calendarios y eventos futuros.

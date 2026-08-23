@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezoner"
 )
 
 func TestTimezoner_FacadeE2E(t *testing.T) {

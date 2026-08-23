@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"timezoner/pkg/project"
-	"timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/project"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
 )
 
 func TestProject_ForUser(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
 )
 
 func TestLoadLocationAndAliases(t *testing.T) {

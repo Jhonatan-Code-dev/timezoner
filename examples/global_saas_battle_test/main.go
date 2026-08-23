@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezoner"
 )
 
 // -----------------------------------------------------------------------------

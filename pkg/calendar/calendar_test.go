@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"timezoner/pkg/calendar"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/calendar"
 )
 
 func TestCalendar_WeekdaysAndBusinessDays(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"timezoner/pkg/types"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/types"
 )
 
 func TestTypes_DBTime_Basics(t *testing.T) {

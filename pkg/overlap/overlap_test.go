@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"timezoner/pkg/overlap"
-	"timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/overlap"
+	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
 )
 
 func TestOverlap_Find(t *testing.T) {

@@ -1,19 +1,31 @@
-PROPRIETARY LICENSE
-
+JHONATAN PUBLIC USE & NON-DERIVATIVE LICENSE (J-PUNDL)
 Copyright (c) 2026 Jhonatan. Todos los derechos reservados / All Rights Reserved.
 
-Queda estrictamente prohibida la copia, distribución, modificación, sublicenciamiento,
-ingeniería inversa o comercialización de este software y sus archivos de documentación asociados
-sin el consentimiento previo, explícito y por escrito del autor y creador: Jhonatan.
+POR FAVOR LEA ESTE ACUERDO DE LICENCIA CUIDADOSAMENTE ANTES DE UTILIZAR ESTE SOFTWARE.
 
-Este software es propiedad exclusiva de Jhonatan. Ninguna persona física o jurídica
-está autorizada para alterar, duplicar, distribuir o utilizar este código fuente con
-fines ajenos a los expresamente autorizados por su titular.
+1. AUTORÍA Y PROPIEDAD INTELECTUAL:
+Este software, denominado "Timezoner", y todos sus archivos asociados son propiedad
+exclusiva de su autor y creador: Jhonatan.
 
+2. CONCESIÓN DE USO (PERMITIDO):
+Por medio de la presente se concede a cualquier persona o entidad el derecho gratuito
+y no exclusivo de:
+  a) Descargar, importar y utilizar este software como dependencia externa en aplicaciones
+     personales, educativas o comerciales mediante los canales oficiales (ej. `go get`).
+  b) Visualizar, estudiar y auditar el código fuente publicado en el repositorio oficial.
+
+3. RESTRICCIONES ESTRICTAS (PROHIBIDO):
+Queda terminantemente prohibido a cualquier tercero:
+  a) MODIFICAR, alterar, parchar o transformar el código fuente original de este software.
+  b) CREAR OBRAS DERIVADAS basadas en este software.
+  c) REDISTRIBUIR, republicar o revender este software o copias modificadas del mismo
+     bajo otro nombre, autoría o licencia.
+  d) ELIMINAR O ALTERAR cualquier aviso de copyright, autoría ("Jhonatan") o este texto
+     de licencia en los archivos originales.
+
+4. EXENCIÓN DE RESPONSABILIDAD:
 EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O
 IMPLÍCITA, INCLUYENDO PERO SIN LIMITARSE A LAS GARANTÍAS DE COMERCIABILIDAD,
 IDONEIDAD PARA UN PROPÓSITO PARTICULAR Y NO INFRACCIÓN. EN NINGÚN CASO EL AUTOR
-O TITULAR DE LOS DERECHOS SERÁ RESPONSABLE DE NINGÚN RECLAMO, DAÑO U OTRA
-RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O DE OTRO TIPO, QUE
-SURJA DE, FUERA DE O EN CONEXIÓN CON EL SOFTWARE O EL USO U OTROS TRATOS EN EL
-SOFTWARE.
+(JHONATAN) SERÁ RESPONSABLE DE NINGÚN RECLAMO, DAÑO O PERJUICIO DERIVADO DEL USO
+DE ESTE SOFTWARE.
