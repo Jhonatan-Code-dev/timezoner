@@ -74,7 +74,7 @@ func main() {
 	fmt.Printf("   • Hora local en Lima:   %s (Garantizado siempre a las 10:00 AM)\n", horaLocalOriginal.Format("2006-01-02 15:04"))
 
 	// Médico especialista conectado desde Tokio para teleconsulta:
-	medicoTokio, _ := cita.ScheduledAt.ForViewer("Asia/Tokyo")
+	medicoTokio, _ := timezoner.ProjectForUser(cita.ScheduledAt.UTC.Time, "Asia/Tokyo")
 	fmt.Printf("   • Teleconsulta en Tokio: %s (Hora de Japón: %s)\n", medicoTokio.Formatted, medicoTokio.OffsetFormatted)
 
 	fmt.Println("\n====================================================================")

@@ -1,4 +1,4 @@
-package timezoner
+package types
 
 import (
 	"database/sql/driver"
@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// DBTime es un tipo temporal envoltorio diseñado para interoperar limpiamente con bases de datos (SQL)
-// y APIs JSON. Garantiza que cualquier fecha se almacene y serialice en UTC estricto sin reloj monotónico.
+// DBTime es un tipo temporal envoltorio para SQL y JSON que garantiza UTC limpio sin reloj monotónico.
 type DBTime struct {
 	time.Time
 }
@@ -23,7 +22,7 @@ func NowDBTime() DBTime {
 	return DBTime{Time: time.Now().UTC().Round(0)}
 }
 
-// Value implementa la interfaz driver.Valuer para persistencia en SQL (PostgreSQL, MySQL, SQLite).
+// Value implementa driver.Valuer para persistencia en SQL.
 func (d DBTime) Value() (driver.Value, error) {
 	if d.IsZero() {
 		return nil, nil
@@ -31,7 +30,7 @@ func (d DBTime) Value() (driver.Value, error) {
 	return d.UTC().Round(0), nil
 }
 
-// Scan implementa la interfaz sql.Scanner para leer valores de la base de datos de forma segura.
+// Scan implementa sql.Scanner para leer valores de la base de datos de forma segura.
 func (d *DBTime) Scan(value any) error {
 	if value == nil {
 		d.Time = time.Time{}
@@ -50,7 +49,7 @@ func (d *DBTime) Scan(value any) error {
 		d.Time = time.Unix(v, 0).UTC().Round(0)
 		return nil
 	default:
-		return fmt.Errorf("timezoner: tipo no soportado para escanear DBTime: %T", value)
+		return fmt.Errorf("types: tipo no soportado para escanear DBTime: %T", value)
 	}
 }
 
@@ -78,7 +77,7 @@ func (d *DBTime) parseString(str string) error {
 		}
 	}
 
-	return fmt.Errorf("%w: '%s' no pudo ser parseado como DBTime", ErrInvalidTimeFormat, str)
+	return fmt.Errorf("types: formato inválido para DBTime: '%s'", str)
 }
 
 // MarshalJSON implementa json.Marshaler formateando siempre en RFC3339 UTC.

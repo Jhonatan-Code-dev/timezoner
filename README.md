@@ -2,7 +2,7 @@
 
 Timezoner es un paquete de alto rendimiento en Go puro (cero dependencias externas) diseñado para la conversión precisa de husos horarios IANA, cálculo de diferencias temporales, detección de horario de verano (DST), aritmética de calendario laboral, formateo de tiempo relativo humano y planificación de reuniones para equipos distribuidos globalmente.
 
-Proporciona soporte de base de datos IANA embebida (`time/tzdata`) para portabilidad absoluta, integración nativa con `database/sql` y dos patrones empresariales de persistencia en base de datos (`DBTime` y `ZonedTime`).
+Construido bajo **Arquitectura Modular Limpia (Modular Monolith)**, desacoplando la lógica de dominio en paquetes especializados dentro de `pkg/` y ofreciendo una fachada pública unificada y Fluent API en la raíz (`timezoner`).
 
 ---
 
@@ -107,7 +107,7 @@ func main() {
 	fmt.Println("Lima:", localTime.Format("2006-01-02 15:04")) // 2026-10-01 10:00
 
 	// 2. Proyectada para un especialista en Tokio
-	tokyoView, _ := app.ScheduledAt.ForViewer("Asia/Tokyo")
+	tokyoView, _ := timezoner.ProjectForUser(app.ScheduledAt.UTC.Time, "Asia/Tokyo")
 	fmt.Printf("Tokio: %s (%s)\n", tokyoView.Formatted, tokyoView.OffsetFormatted)
 }
 ```
@@ -197,32 +197,57 @@ func main() {
 
 ---
 
-## Arquitectura de Paquetes y Tipos
+## 🏛️ Arquitectura Modular (Monolito por Módulos / Clean Architecture)
 
-| Tipo / Paquete | Propósito |
-| :--- | :--- |
-| **`timezoner.DBTime`** | Tipo SQL/JSON de columna única en UTC para transacciones, pagos y auditoría. |
-| **`timezoner.ZonedTime`** | Tipo SQL/JSON de doble columna (UTC + zona IANA) para citas, calendarios y vuelos. |
-| **`timezoner.Ingest*`** | Sanitiza y normaliza fechas locales de usuarios a UTC antes de persistir en BD. |
-| **`timezoner.Project*`** | Proyecta registros UTC de la BD a la zona específica de cada usuario con ISO 8601 y estado DST. |
+El proyecto está estructurado para escalar sin acoplamiento:
 
----
-
-## Modelo de Errores
-
-Timezoner exporta errores centinela tipados para verificación explícita con `errors.Is`:
-
-- `timezoner.ErrEmptyZoneName`: Retornado cuando se ingresa una cadena vacía como identificador de zona.
-- `timezoner.ErrInvalidZone`: Retornado cuando el nombre de la zona no existe en la base de datos IANA.
-- `timezoner.ErrInvalidTimeFormat`: Retornado cuando una cadena de fecha no coincide con el layout provisto.
-- `timezoner.ErrNoZonesProvided`: Retornado cuando se ejecuta una operación multizona sin proporcionar zonas.
-- `timezoner.ErrEmptyDateString`: Retornado cuando se intenta procesar un texto de fecha vacío.
+```
+timezoner/
+│
+├── timezoner.go              # Fachada pública principal y Fluent API unificada
+├── timezoner_test.go         # Pruebas de integración E2E, Fuzzing y estrés concurrente
+├── examples_test.go          # Ejemplos ejecutables para pkg.go.dev
+├── go.mod                    # Definición del módulo
+├── LICENSE                   # Licencia Propietaria Exclusiva
+├── README.md                 # Documentación técnica
+│
+├── pkg/                      # Módulos de dominio desacoplados e independientes
+│   ├── zone/                 # Dominio de Zonas IANA, tzdata embebido, caché y alias
+│   │   ├── zone.go
+│   │   └── zone_test.go
+│   ├── types/                # Tipos de persistencia SQL (DBTime, ZonedTime)
+│   │   ├── dbtime.go
+│   │   ├── zonedtime.go
+│   │   └── types_test.go
+│   ├── calendar/             # Aritmética de días hábiles, festivos y límites de tiempo
+│   │   ├── calendar.go
+│   │   └── calendar_test.go
+│   ├── humanize/             # Formateo de tiempo relativo natural (ES/EN)
+│   │   ├── humanize.go
+│   │   └── humanize_test.go
+│   ├── ingest/               # Ingesta y normalización de entradas de usuario a UTC
+│   │   ├── ingest.go
+│   │   └── ingest_test.go
+│   ├── project/              # Proyección y adaptación de fechas UTC a zonas locales
+│   │   ├── project.go
+│   │   └── project_test.go
+│   └── overlap/              # Algoritmos de solapamiento de horarios laborales
+│       ├── overlap.go
+│       └── overlap_test.go
+│
+└── examples/                 # Demostraciones ejecutables para desarrolladores
+    ├── basic_usage/          # Conversiones básicas y Fluent API
+    ├── db_lifecycle_demo/    # Ciclo de vida: Ingesta -> Persistencia BD -> Proyección
+    ├── enterprise_showcase/  # Demostración enterprise (Facturación, Vencimientos)
+    ├── team_meeting_planner/ # Planificador de reuniones entre países
+    └── two_database_patterns/# Demostración de los 2 patrones de persistencia
+```
 
 ---
 
 ## Pruebas y Benchmarks
 
-Ejecutar la suite completa de pruebas unitarias con cobertura:
+Ejecutar la suite completa de pruebas unitarias con cobertura en todos los módulos:
 
 ```bash
 go test -v -cover ./...
@@ -232,37 +257,6 @@ Ejecutar benchmarks de rendimiento y memoria:
 
 ```bash
 go test -bench=. -benchmem ./...
-```
-
----
-
-## Estructura del Repositorio
-
-```
-.
-├── go.mod                      # Definición del módulo Go
-├── timezoner.go                # API central y Fluent API
-├── zones.go                    # Catálogo IANA, caché en memoria, tzdata embebido y alias
-├── calendar.go                 # Días laborables, fines de semana y límites de fecha
-├── humanize.go                 # Tiempo relativo en lenguaje natural (ES/EN)
-├── dbtime.go                   # Driver SQL Valuer / Scanner en UTC puro (Patrón 1)
-├── zonedtime.go                # Tipo SQL/JSON con UTC + Zona IANA para calendarios (Patrón 2)
-├── ingest.go                   # Ingesta y normalización a UTC para BD
-├── project.go                  # Proyección y formateo para usuarios finales
-├── timezoner_test.go           # Tests unitarios centrales, fuzzing y pruebas de concurrencia
-├── calendar_test.go            # Tests unitarios de calendario y días hábiles
-├── humanize_test.go            # Tests de tiempo relativo
-├── dbtime_test.go              # Tests de persistencia SQL y JSON
-├── zonedtime_test.go           # Tests de ZonedTime para citas y eventos futuros
-├── examples_test.go            # Ejemplos verificables para godoc / pkg.go.dev
-├── examples/
-│   ├── basic_usage/            # Ejemplos básicos de conversión
-│   ├── db_lifecycle_demo/      # Demostración del ciclo Ingesta -> BD -> Proyección
-│   ├── enterprise_showcase/    # Demostración con facturación y días hábiles
-│   ├── team_meeting_planner/   # Planificador de reuniones internacionales
-│   └── two_database_patterns/  # Demostración de los 2 patrones de base de datos
-├── LICENSE                     # Licencia Propietaria Exclusiva
-└── README.md                   # Documentación técnica
 ```
 
 ---

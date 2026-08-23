@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"timezoner/ingest"
-	"timezoner/project"
+	"timezoner"
 )
 
 func main() {
@@ -18,15 +17,15 @@ func main() {
 	sourceZone := "America/Lima"
 	fmt.Printf("\n1. ENTRADA DEL CLIENTE:\n   Fecha ingresada: %s (Zona: %s)\n", inputDate, sourceZone)
 
-	// PASO 2: INGESTA (Módulo ingest) -> Normalización a Hora Mundial (UTC)
-	dbReadyUTC, err := ingest.FromString(inputDate, sourceZone)
+	// PASO 2: INGESTA -> Normalización a Hora Mundial (UTC) para la BD
+	dbReadyUTC, err := timezoner.IngestFromString(inputDate, sourceZone)
 	if err != nil {
 		log.Fatalf("Error al normalizar para BD: %v", err)
 	}
-	fmt.Printf("\n2. NORMALIZACIÓN PARA BASE DE DATOS (Módulo ingest):\n   Guardado en BD (UTC): %s (Instante universal)\n", dbReadyUTC.Format("2006-01-02 15:04:05 UTC"))
+	fmt.Printf("\n2. NORMALIZACIÓN PARA BASE DE DATOS:\n   Guardado en BD (UTC): %s (Instante universal)\n", dbReadyUTC.Format("2006-01-02 15:04:05 UTC"))
 
-	// PASO 3: PROYECCIÓN (Módulo project) -> Lectura desde la BD para diferentes usuarios en el mundo
-	fmt.Println("\n3. CONSULTA Y PROYECCIÓN POR USUARIOS (Módulo project):")
+	// PASO 3: PROYECCIÓN -> Lectura desde la BD para diferentes usuarios en el mundo
+	fmt.Println("\n3. CONSULTA Y PROYECCIÓN POR USUARIOS:")
 
 	viewers := []string{
 		"America/Lima",     // Quien creó el evento
@@ -36,7 +35,7 @@ func main() {
 		"Asia/Kolkata",     // Participante en India (Offset +05:30)
 	}
 
-	projections, err := project.BatchForUsers(dbReadyUTC, viewers)
+	projections, err := timezoner.ProjectBatchForUsers(dbReadyUTC, viewers)
 	if err != nil {
 		log.Fatalf("Error en proyección: %v", err)
 	}

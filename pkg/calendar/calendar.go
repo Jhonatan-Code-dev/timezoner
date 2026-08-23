@@ -1,4 +1,4 @@
-package timezoner
+package calendar
 
 import "time"
 
@@ -13,7 +13,7 @@ func IsWeekday(t time.Time) bool {
 	return !IsWeekend(t)
 }
 
-// AddBusinessDays añade o resta un número de días laborables (lunes a viernes), ignorando fines de semana.
+// AddBusinessDays añade o resta días hábiles de lunes a viernes ignorando fines de semana.
 func AddBusinessDays(t time.Time, days int) time.Time {
 	if days == 0 {
 		return t
@@ -37,13 +37,13 @@ func AddBusinessDays(t time.Time, days int) time.Time {
 	return current
 }
 
-// StartOfDay devuelve el inicio del día (00:00:00.000000000) en la zona horaria de la fecha.
+// StartOfDay devuelve el inicio del día (00:00:00.000000000) en la zona de la fecha.
 func StartOfDay(t time.Time) time.Time {
 	year, month, day := t.Date()
 	return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 }
 
-// EndOfDay devuelve el final del día (23:59:59.999999999) en la zona horaria de la fecha.
+// EndOfDay devuelve el final del día (23:59:59.999999999) en la zona de la fecha.
 func EndOfDay(t time.Time) time.Time {
 	year, month, day := t.Date()
 	return time.Date(year, month, day, 23, 59, 59, 999999999, t.Location())
@@ -58,12 +58,11 @@ func StartOfMonth(t time.Time) time.Time {
 // EndOfMonth devuelve el último nanosegundo del último día del mes correspondiente.
 func EndOfMonth(t time.Time) time.Time {
 	year, month, _ := t.Date()
-	// El primer día del mes siguiente menos 1 nanosegundo
 	firstOfNextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, t.Location())
 	return firstOfNextMonth.Add(-time.Nanosecond)
 }
 
-// DaysInMonth calcula la cantidad exacta de días que contiene un mes determinado considerando bisiestos.
+// DaysInMonth calcula la cantidad exacta de días que contiene un mes considerando bisiestos.
 func DaysInMonth(year int, month time.Month) int {
 	firstOfNextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.UTC)
 	lastDayOfMonth := firstOfNextMonth.AddDate(0, 0, -1)

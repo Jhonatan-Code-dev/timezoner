@@ -1,4 +1,4 @@
-package timezoner
+package humanize
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Humanize convierte la diferencia entre t y relativeTo (por defecto time.Now()) en una cadena legible en español.
+// Humanize convierte la diferencia temporal en una cadena legible en español ("hace 5 minutos", "en 2 horas").
 func Humanize(t time.Time, relativeTo ...time.Time) string {
 	now := time.Now()
 	if len(relativeTo) > 0 {
@@ -54,7 +54,6 @@ func Humanize(t time.Time, relativeTo ...time.Time) string {
 		}
 	}
 
-	// En el futuro
 	switch {
 	case seconds < 45:
 		return "en unos momentos"
@@ -81,7 +80,7 @@ func Humanize(t time.Time, relativeTo ...time.Time) string {
 	}
 }
 
-// HumanizeEn convierte la diferencia temporal en una cadena legible en inglés.
+// HumanizeEn convierte la diferencia temporal en una cadena legible en inglés ("5 minutes ago", "in 2 hours").
 func HumanizeEn(t time.Time, relativeTo ...time.Time) string {
 	now := time.Now()
 	if len(relativeTo) > 0 {
@@ -129,7 +128,6 @@ func HumanizeEn(t time.Time, relativeTo ...time.Time) string {
 		}
 	}
 
-	// In the future
 	switch {
 	case seconds < 45:
 		return "in a few moments"

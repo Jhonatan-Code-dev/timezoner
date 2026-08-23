@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"timezoner"
-	"timezoner/ingest"
-	"timezoner/project"
 )
 
 type InvoiceRecord struct {
@@ -47,13 +45,13 @@ func main() {
 	fmt.Printf("\n2. TIEMPO RELATIVO HUMANO:\n   • Emisión: %s\n", relativeIssue)
 
 	// 4. Ingesta y Proyección para el Cliente
-	customerView, _ := project.ForUser(invoice.DueAt.Time, invoice.CustomerTZ)
+	customerView, _ := timezoner.ProjectForUser(invoice.DueAt.Time, invoice.CustomerTZ)
 	fmt.Printf("\n3. VISTA PARA EL CLIENTE EN %s:\n", invoice.CustomerTZ)
 	fmt.Printf("   • Vence el: %s (%s)\n", customerView.Formatted, customerView.OffsetFormatted)
 	fmt.Printf("   • DST activo: %v\n", customerView.IsDST)
 
 	// 5. Ingesta limpia
-	parsedInput, _ := ingest.FromString("11/09/2026 23:59", "PET")
+	parsedInput, _ := timezoner.IngestFromString("11/09/2026 23:59", "PET")
 	fmt.Printf("\n4. INGESTA DESDE FORMULARIO (PET -> UTC):\n   • %s\n", parsedInput.Format(time.RFC3339))
 
 	fmt.Println("\n==================================================================")
