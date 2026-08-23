@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/humanize"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/humanize"
 )
 
 func TestHumanize(t *testing.T) {

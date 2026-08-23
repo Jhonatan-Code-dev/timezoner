@@ -23,7 +23,7 @@ SOFTWARE.
 --------------------------------------------------------------------------------
 ACKNOWLEDGEMENTS AND THIRD-PARTY NOTICES:
 
-This software utilizes and integrates components from the Go Standard Library
+This software, named "TimezonerMAX", utilizes and integrates components from the Go Standard Library
 and the IANA Time Zone Database:
 
 1. The Go Standard Library:

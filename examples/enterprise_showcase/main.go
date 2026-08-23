@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	timezoner "github.com/Jhonatan-Code-dev/timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 type InvoiceRecord struct {

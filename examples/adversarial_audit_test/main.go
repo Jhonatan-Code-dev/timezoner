@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	timezoner "github.com/Jhonatan-Code-dev/timezoner"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/calendar"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/humanize"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/ingest"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/overlap"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/types"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	timezoner "github.com/Jhonatan-Code-dev/timezonermax"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/calendar"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/humanize"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/ingest"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/overlap"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/types"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 type AuditFinding struct {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/ingest"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/ingest"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 func TestIngest_FromStringAndLocal(t *testing.T) {

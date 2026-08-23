@@ -1,10 +1,10 @@
-package timezoner_test
+package timezonermax_test
 
 import (
 	"fmt"
 	"time"
 
-	timezoner "github.com/Jhonatan-Code-dev/timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func ExampleConvert() {

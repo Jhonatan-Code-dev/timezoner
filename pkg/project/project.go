@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 // ErrNoZonesProvided se retorna cuando no se especifican zonas en operaciones batch.

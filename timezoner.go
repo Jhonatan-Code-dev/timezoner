@@ -1,20 +1,20 @@
-// Package timezoner es la fachada pública principal de la librería. Proporciona una Fluent API
+// Package timezonermax es la fachada pública principal de la librería TimezonerMAX. Proporciona una Fluent API
 // idiomática y de alto rendimiento que integra de forma coherente los módulos de zonas IANA,
 // persistencia en base de datos (DBTime, ZonedTime), días hábiles, tiempo relativo y cálculo de solapamientos.
 //
 // Diseñado y creado por Jhonatan bajo arquitectura limpia y modular.
-package timezoner
+package timezonermax
 
 import (
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/calendar"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/humanize"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/ingest"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/overlap"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/project"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/types"
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/calendar"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/humanize"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/ingest"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/overlap"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/project"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/types"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 // Re-exportación de tipos principales para conveniencia del consumidor de la librería.

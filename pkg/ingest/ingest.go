@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 var (

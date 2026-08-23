@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	timezoner "github.com/Jhonatan-Code-dev/timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func main() {

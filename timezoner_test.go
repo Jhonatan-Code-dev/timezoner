@@ -1,11 +1,11 @@
-package timezoner_test
+package timezonermax_test
 
 import (
 	"errors"
 	"testing"
 	"time"
 
-	timezoner "github.com/Jhonatan-Code-dev/timezoner"
+	timezoner "github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func TestTimezoner_FacadeE2E(t *testing.T) {

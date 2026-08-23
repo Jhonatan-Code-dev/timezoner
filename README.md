@@ -1,6 +1,6 @@
-# Timezoner — Manual de Uso, Comparativa y Guía de Arquitectura
+# TimezonerMAX — Manual de Uso, Comparativa y Guía de Arquitectura
 
-Timezoner es un paquete de alto rendimiento en Go puro (cero dependencias externas) diseñado para resolver de forma definitiva la persistencia en base de datos, conversión de husos horarios IANA, cálculo de diferencias temporales, detección de horario de verano (DST), aritmética de calendario laboral y planificación de reuniones para equipos distribuidos globalmente.
+TimezonerMAX es un paquete de alto rendimiento en Go puro (cero dependencias externas) diseñado para resolver de forma definitiva la persistencia en base de datos, conversión de husos horarios IANA, cálculo de diferencias temporales, detección de horario de verano (DST), aritmética de calendario laboral y planificación de reuniones para equipos distribuidos globalmente.
 
 Construido bajo **Arquitectura Monolítica Modular (Clean Architecture)** con tipos estrictamente encapsulados e inmutables.
 
@@ -27,13 +27,13 @@ Construido bajo **Arquitectura Monolítica Modular (Clean Architecture)** con ti
 
 ## Comparativa Técnica con Otras Librerías de Go
 
-A continuación se detalla la comparativa real, verídica y cuantitativa entre `timezoner` y las principales alternativas del ecosistema Go (`time` estándar, `golang-module/carbon`, `jinzhu/now` y `cloud.google.com/go/civil`):
+A continuación se detalla la comparativa real, verídica y cuantitativa entre `TimezonerMAX` y las principales alternativas del ecosistema Go (`time` estándar, `golang-module/carbon`, `jinzhu/now` y `cloud.google.com/go/civil`):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                             MATRIZ COMPARATIVA DE CAPACIDADES Y RENDIMIENTO                                     │
 ├──────────────────────────────────────┬─────────────┬────────────────┬──────────────┬──────────────┬─────────────┤
-│ Característica / Capacidad           │ timezoner   │ Go time (std)  │ carbon (v2)  │ jinzhu/now   │ google/civil│
+│ Característica / Capacidad           │TimezonerMAX │ Go time (std)  │ carbon (v2)  │ jinzhu/now   │ google/civil│
 ├──────────────────────────────────────┼─────────────┼────────────────┼──────────────┼──────────────┼─────────────┤
 │ Cero Dependencias Externas (Pure Go) │ SI (100%)   │ SI (100%)      │ NO (complejo)│ SI           │ SI          │
 │ tzdata IANA Embebido Autónomo        │ SI (Nativo) │ NO (requiere SO│ NO           │ NO           │ NO          │
@@ -61,8 +61,8 @@ flowchart TD
         A[Formulario Web / Mobile] -->|Input Local + Zona| B(HTTP Handler / Controller)
     end
 
-    subgraph Facade ["Fachada Pública timezoner"]
-        B -->|IngestFromString| C[timezoner.go / Fluent API]
+    subgraph Facade ["Fachada Pública TimezonerMAX"]
+        B -->|IngestFromString| C[timezonermax.go / Fluent API]
     end
 
     subgraph Domain ["Módulos de Dominio Desacoplados (pkg/)"]
@@ -87,7 +87,7 @@ flowchart TD
 ### 2. Gráfico Comparativo de Latencia de Creación de Tipos (Menor es Mejor)
 
 ```
-timezoner (NewDBTime)    | █ 5.45 ns/op               (0 B/op, 0 allocs)
+TimezonerMAX (NewDBTime) | █ 5.45 ns/op               (0 B/op, 0 allocs)  <-- Ultrarrápido
 google/civil             | ███ 15.2 ns/op             (0 B/op, 0 allocs)
 Go time.Now().UTC()      | ████ 22.1 ns/op            (0 B/op, 0 allocs)
 jinzhu/now               | ███████████ 55.4 ns/op     (16 B/op, 1 alloc)
@@ -100,7 +100,7 @@ golang-module/carbon     | █████████████████�
 ## Instalación
 
 ```bash
-go get timezoner
+go get github.com/Jhonatan-Code-dev/timezonermax
 ```
 
 Requiere Go 1.22 o superior. Compatible de forma nativa con Windows, Linux, macOS, Alpine y contenedores Docker `FROM scratch` gracias a `time/tzdata` embebido en el binario.
@@ -118,7 +118,7 @@ En aplicaciones de producción existen **dos necesidades completamente distintas
 │ ¿Es un hecho histórico o transacción?    │ ¿Es una cita o evento en el futuro?        │
 │ (Pagos, logs, pedidos, chat, auditoría)   │ (Citas médicas, vuelos, webinars, alarmas) │
 ├───────────────────────────────────────────┼────────────────────────────────────────────┤
-│           USA: timezoner.DBTime           │          USA: timezoner.ZonedTime          │
+│         USA: timezonermax.DBTime          │        USA: timezonermax.ZonedTime         │
 │                                           │                                            │
 │ • 1 Columna en BD: TIMESTAMPTZ            │ • 2 Columnas o JSONB:                      │
 │ • Almacenado en UTC absoluto              │   col_utc (TIMESTAMPTZ) + col_zone (TEXT)  │
@@ -139,13 +139,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 type Payment struct {
-	ID        string           `json:"id"`
-	Amount    float64          `json:"amount"`
-	PaidAtUTC timezoner.DBTime `json:"paid_at_utc"` // SQL: TIMESTAMPTZ / JSON: RFC3339Nano UTC
+	ID        string              `json:"id"`
+	Amount    float64             `json:"amount"`
+	PaidAtUTC timezonermax.DBTime `json:"paid_at_utc"` // SQL: TIMESTAMPTZ / JSON: RFC3339Nano UTC
 }
 
 func main() {
@@ -153,7 +153,7 @@ func main() {
 	p := Payment{
 		ID:        "TX-99881",
 		Amount:    350.00,
-		PaidAtUTC: timezoner.NowDBTime(),
+		PaidAtUTC: timezonermax.NowDBTime(),
 	}
 
 	// 2. Serializar a JSON (emite automáticamente en RFC3339Nano UTC)
@@ -161,8 +161,8 @@ func main() {
 	fmt.Println("Almacenado en BD:\n", string(data))
 
 	// 3. Proyectar para visualización de un cliente en Madrid y otro en Tokio
-	vistaMadrid, _ := timezoner.ProjectForUser(p.PaidAtUTC.Time(), "Europe/Madrid")
-	vistaTokio, _ := timezoner.ProjectForUser(p.PaidAtUTC.Time(), "Asia/Tokyo")
+	vistaMadrid, _ := timezonermax.ProjectForUser(p.PaidAtUTC.Time(), "Europe/Madrid")
+	vistaTokio, _ := timezonermax.ProjectForUser(p.PaidAtUTC.Time(), "Asia/Tokyo")
 
 	fmt.Printf("Cliente en Madrid ve: %s (%s)\n", vistaMadrid.Formatted, vistaMadrid.OffsetFormatted)
 	fmt.Printf("Cliente en Tokio ve:  %s (%s)\n", vistaTokio.Formatted, vistaTokio.OffsetFormatted)
@@ -180,18 +180,18 @@ package main
 
 import (
 	"fmt"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 type Appointment struct {
-	ID          int                 `json:"id"`
-	Patient     string              `json:"patient"`
-	ScheduledAt timezoner.ZonedTime `json:"scheduled_at"` // JSON: {"utc":"...","zone":"America/Lima"}
+	ID          int                    `json:"id"`
+	Patient     string                 `json:"patient"`
+	ScheduledAt timezonermax.ZonedTime `json:"scheduled_at"` // JSON: {"utc":"...","zone":"America/Lima"}
 }
 
 func main() {
 	// 1. Ingesta desde el formulario del paciente en Lima
-	citaZoned, err := timezoner.ZonedFromLocal("2026-10-01 10:00", "America/Lima")
+	citaZoned, err := timezonermax.ZonedFromLocal("2026-10-01 10:00", "America/Lima")
 	if err != nil {
 		panic(err)
 	}
@@ -207,7 +207,7 @@ func main() {
 	fmt.Println("Hora de la cita en Lima:", horaLocal.Format("2006-01-02 15:04"))
 
 	// 3. Teleconsulta: proyectar para un médico especialista en Tokio
-	medicoTokio, _ := timezoner.ProjectForUser(app.ScheduledAt.UTC.Time(), "Asia/Tokyo")
+	medicoTokio, _ := timezonermax.ProjectForUser(app.ScheduledAt.UTC.Time(), "Asia/Tokyo")
 	fmt.Printf("Hora de la cita en Tokio: %s (%s)\n", medicoTokio.Formatted, medicoTokio.OffsetFormatted)
 }
 ```
@@ -219,18 +219,18 @@ func main() {
 Flujo completo desde el frontend hasta la base de datos y su posterior entrega:
 
 ```
-[ FRONTEND ]                  [ BACKEND / INGESTA ]           [ BASE DE DATOS ]           [ PROYECCIÓN MULTI-USUARIO ]
-"2026-09-01 10:00"      ───>  timezoner.IngestFromString() ───> timezoner.DBTime   ───>   timezoner.ProjectForUser()
-(Zona: America/Lima)          Convierte a UTC (15:00 UTC)      Guarda en UTC puro         Lima:   10:00 (-05:00)
-                                                                                          Madrid: 17:00 (+02:00)
-                                                                                          Tokio:  00:00 (+09:00)
+[ FRONTEND ]                  [ BACKEND / INGESTA ]              [ BASE DE DATOS ]              [ PROYECCIÓN MULTI-USUARIO ]
+"2026-09-01 10:00"      ───>  timezonermax.IngestFromString() ───> timezonermax.DBTime   ───>   timezonermax.ProjectForUser()
+(Zona: America/Lima)          Convierte a UTC (15:00 UTC)         Guarda en UTC puro            Lima:   10:00 (-05:00)
+                                                                                                Madrid: 17:00 (+02:00)
+                                                                                                Tokio:  00:00 (+09:00)
 ```
 
 ---
 
 ## Aritmética de Negocio y Días Hábiles
 
-Timezoner resuelve el cálculo de fechas de vencimiento y plazos comerciales saltando fines de semana y preservando la hora local ante cambios de DST:
+TimezonerMAX resuelve el cálculo de fechas de vencimiento y plazos comerciales saltando fines de semana y preservando la hora local ante cambios de DST:
 
 ```go
 package main
@@ -238,7 +238,7 @@ package main
 import (
 	"fmt"
 	"time"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func main() {
@@ -246,7 +246,7 @@ func main() {
 	viernes := time.Date(2026, 9, 4, 10, 30, 0, 0, time.UTC)
 
 	// Sumar 5 días hábiles (salta sábado y domingo) y mover al final del día hábil
-	vencimiento := timezoner.At(viernes).
+	vencimiento := timezonermax.At(viernes).
 		AddBusinessDays(5). // Salta automáticamente fin de semana -> siguiente viernes
 		EndOfDay().         // Establece 23:59:59.999999999
 		MustTime()
@@ -268,11 +268,11 @@ package main
 import (
 	"fmt"
 	"time"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func main() {
-	tp := timezoner.Now().
+	tp := timezonermax.Now().
 		In("America/Lima").
 		StartOfWeek().        // Lunes 00:00:00
 		AddBusinessDays(2).   // Miércoles
@@ -306,20 +306,20 @@ package main
 import (
 	"fmt"
 	"time"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func main() {
 	ahora := time.Now()
 
-	fmt.Println(timezoner.Humanize(ahora.Add(-30 * time.Second))) // "justo ahora"
-	fmt.Println(timezoner.Humanize(ahora.Add(-5 * time.Minute)))  // "hace 5 minutos"
-	fmt.Println(timezoner.Humanize(ahora.Add(-2 * time.Hour)))    // "hace 2 horas"
-	fmt.Println(timezoner.Humanize(ahora.Add(24 * time.Hour)))    // "mañana"
+	fmt.Println(timezonermax.Humanize(ahora.Add(-30 * time.Second))) // "justo ahora"
+	fmt.Println(timezonermax.Humanize(ahora.Add(-5 * time.Minute)))  // "hace 5 minutos"
+	fmt.Println(timezonermax.Humanize(ahora.Add(-2 * time.Hour)))    // "hace 2 horas"
+	fmt.Println(timezonermax.Humanize(ahora.Add(24 * time.Hour)))    // "mañana"
 
 	// Versión en inglés:
-	fmt.Println(timezoner.HumanizeEn(ahora.Add(-5 * time.Minute))) // "5 minutes ago"
-	fmt.Println(timezoner.HumanizeEn(ahora.Add(2 * time.Hour)))    // "in 2 hours"
+	fmt.Println(timezonermax.HumanizeEn(ahora.Add(-5 * time.Minute))) // "5 minutes ago"
+	fmt.Println(timezonermax.HumanizeEn(ahora.Add(2 * time.Hour)))    // "in 2 hours"
 }
 ```
 
@@ -335,21 +335,21 @@ package main
 import (
 	"fmt"
 	"time"
-	"timezoner"
+	"github.com/Jhonatan-Code-dev/timezonermax"
 )
 
 func main() {
-	req := timezoner.OverlapRequest{
+	req := timezonermax.OverlapRequest{
 		Date:  time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC),
 		Zones: []string{"America/Lima", "America/New_York", "Europe/Madrid"},
-		DefaultHours: timezoner.WorkingHours{
+		DefaultHours: timezonermax.WorkingHours{
 			StartHour: 9,  // 09:00
 			EndHour:   18, // 18:00
 		},
 		SlotDuration: 1 * time.Hour,
 	}
 
-	slots, err := timezoner.FindOverlap(req)
+	slots, err := timezonermax.FindOverlap(req)
 	if err != nil {
 		panic(err)
 	}

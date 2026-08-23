@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Jhonatan-Code-dev/timezoner/pkg/zone"
+	"github.com/Jhonatan-Code-dev/timezonermax/pkg/zone"
 )
 
 // ErrNoZonesProvided se retorna cuando no se proporcionan zonas horarias.
