@@ -1,27 +1,32 @@
-# Estándares de Arquitectura e Ingeniería Go (Top-Tier FAANG)
+# Estándares de Arquitectura e Ingeniería Go (Nivel 100 — Drástico)
 
-Este documento define las reglas de observancia obligatoria para cualquier desarrollo, modificación, refactorización o auditoría en el repositorio **timezoner**.
+Este documento define las reglas de ingeniería de observancia **innegociable** para cualquier desarrollo, modificación, refactorización o auditoría en el repositorio **timezoner**.
 
 ---
 
 ## 1. Arquitectura Modular Limpia (Modular Monolith)
-- **Dominio Desacoplado en `pkg/`**: Cada funcionalidad especializada (`pkg/zone`, `pkg/types`, `pkg/calendar`, `pkg/humanize`, `pkg/ingest`, `pkg/project`, `pkg/overlap`) es un paquete autónomo con alta cohesión y bajo acoplamiento.
-- **Fachada Pública Unificada**: El paquete raíz `timezoner` expone la Fluent API (`timezoner.At()`, `timezoner.Now()`) y constructores principales como punto de entrada único para los consumidores de la librería.
-- **Regla de Dependencia (DIP)**: Los módulos de dominio no dependen de infraestructura externa. El árbol de dependencias internas debe ser un grafo acíclico dirigido (DAG).
+- **Dominio Desacoplado en `pkg/`**: Cada módulo (`pkg/zone`, `pkg/types`, `pkg/calendar`, `pkg/humanize`, `pkg/ingest`, `pkg/project`, `pkg/overlap`) debe ser 100% independiente y autosuficiente.
+- **Fachada Pública Unificada**: El paquete raíz `timezoner` es el único punto de contacto oficial para los consumidores.
+- **Árbol de Dependencias Aislado**: Los paquetes en `pkg/` jamás importan paquetes de aplicación ni controladores.
 
-## 2. Inmutabilidad y Protección de Estado
-- **Cero Variables Globales Mutables Exportadas**: Ningún slice, mapa ni variable de paquete exportada puede ser modificable externamente.
-- **Retorno de Copias Defensivas**: Toda función que exponga listas o catálogos internos (como `CommonZones()` o `SupportedLayouts()`) debe retornar una copia independiente (`copy()`).
-- **Encapsulación de Tipos de Persistencia**: Tipos como `DBTime` y `ZonedTime` no deben embeber `time.Time` directamente; deben usar campos privados con accesores controlados (`.Time()`, `.UTC()`, `.IsZero()`) para prevenir mutaciones que corrompan la zona horaria en la base de datos.
-- **Funciones Nombradas**: No declarar funciones exportadas como variables lambda `var Func = func()`; siempre usar declaraciones de función estándar `func Func()`.
+## 2. Inmutabilidad y Protección Absoluta de Estado
+- **Prohibición Total de Variables Globales Mutables Exportadas**: Cualquier `var` exportada mutable (slices, maps, variables de configuración) es considerada un defecto crítico inmediato.
+- **Copias Defensivas Obligatorias**: Toda función que exponga slices o listas internas (`CommonZones()`, `SupportedLayouts()`) debe ejecutar `copy()` a un nuevo slice antes de retornar.
+- **Tipos de Persistencia Encapsulados**: `DBTime` y `ZonedTime` tienen campos privados y accesores controlados (`.Time()`, `.UTC()`, `.IsZero()`). Jamás se permite embeber `time.Time` directamente.
+- **Funciones Nombradas Inmutables**: Prohibido usar variables de tipo función `var Func = func()`. Siempre usar declaraciones de función estándar `func Func()`.
 
-## 3. Concurrencia y Seguridad (CWE-362)
-- **Thread-Safety Total**: Toda función pública, estructura compartida y mecanismo de caché debe ser 100% seguro para ejecución concurrente con goroutines masivas.
-- **Protección de Mapas**: Los mapas globales deben protegerse obligatoriamente con `sync.RWMutex` (lecturas con `RLock()`, escrituras con `Lock()`) o `sync.Map`.
-- **Cero Fugas de Goroutines**: Cualquier proceso asíncrono debe tener un ciclo de vida delimitado y cancelable mediante `context.Context`.
+## 3. Concurrencia y Detección de Carreras (CWE-362)
+- **Thread-Safety Obligatorio**: Todo mapa global o caché debe estar respaldado por `sync.RWMutex` (lecturas con `RLock()`, escrituras con `Lock()`) o `sync.Map`.
+- **Inmunidad a Deadlocks**: Bloqueos mínimos; jamás invocar funciones desconocidas o de terceros dentro de una sección crítica bloqueada.
 
-## 4. Rendimiento y Cero Alocaciones Innecesarias
-- **Optimización de Rutas Críticas**: Métodos de alta frecuencia (`NewDBTime`, `LoadLocation` en caché, conversiones) deben ejecutar en sub-microsegundos con $\le 1$ alocación en el heap.
-- **Prealocación de Memoria**: Siempre que se conozca la longitud o capacidad de una colección, inicializar con `make([]T, 0, cap)`.
-- **Caché en Memoria**: Mantener caché concurrente para resolución de `*time.Location`.
-- **Evidencia Empírica**: Toda optimización de rendimiento debe ser validada con benchmarks reproducibles (`go test -bench=. -benchmem`).
+## 4. Rendimiento Extremo con Evidencia Empírica
+- **Límites de Rendimiento en Rutas Calientes**:
+  - `LoadLocation` (con caché): $< 100\text{ ns/op}$, $\le 1\text{ alloc/op}$.
+  - `NewDBTime`: $< 20\text{ ns/op}$, $0\text{ allocs/op}$.
+  - `AddBusinessDays`: $< 500\text{ ns/op}$, $0\text{ allocs/op}$.
+- **Prealocación de Slices**: Uso obligatorio de `make([]T, 0, cap)` cuando la dimensión es determinable.
+- **Prueba Obligatoria**: Toda afirmación de velocidad debe incluir la salida textual de `go test -bench=. -benchmem`.
+
+## 5. Inmunidad a Pánicos y Manejo de Errores
+- **Cero Pánicos en APIs Públicas**: Las funciones públicas ordinarias nunca deben hacer `panic()`. Solo las variantes con prefijo explícito `Must*` (`MustTime()`, `MustDBTime()`) tienen permitido el pánico ante error.
+- **Errores Centinela Estructurados**: Todo error debe usar errores tipados / centinela envueltos con `%w` (`ErrInvalidZone`, `ErrEmptyDateString`, `ErrNoZonesProvided`).

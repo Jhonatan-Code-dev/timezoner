@@ -54,6 +54,10 @@ func TestIsValidAndNormalize(t *testing.T) {
 	if err != nil || norm != "America/Bogota" {
 		t.Errorf("Normalize(COT) = %s, err: %v; esperado America/Bogota", norm, err)
 	}
+
+	if _, err := zone.Normalize("Mars/NonExistent"); err == nil {
+		t.Errorf("Normalize con zona inválida debería retornar error")
+	}
 }
 
 func TestRegisterAlias(t *testing.T) {
@@ -65,6 +69,11 @@ func TestRegisterAlias(t *testing.T) {
 	loc, err := zone.LoadLocation("PERU")
 	if err != nil || loc.String() != "America/Lima" {
 		t.Errorf("LoadLocation(PERU) = %v, esperado America/Lima", loc)
+	}
+
+	// Error al registrar alias para zona inválida
+	if err := zone.RegisterAlias("INVALID", "Invalid/ZoneName"); err == nil {
+		t.Errorf("RegisterAlias con zona inválida debería retornar error")
 	}
 }
 
@@ -84,5 +93,63 @@ func TestGetInfoAndDifference(t *testing.T) {
 	}
 	if diff != 7*time.Hour {
 		t.Errorf("Diferencia esperada 7h, obtenida: %v", diff)
+	}
+
+	// Difference con zona A inválida
+	if _, err := zone.Difference("Invalid/ZoneA", "America/Lima", base); err == nil {
+		t.Errorf("Difference con zona A inválida debería retornar error")
+	}
+
+	// Difference con zona B inválida
+	if _, err := zone.Difference("America/Lima", "Invalid/ZoneB", base); err == nil {
+		t.Errorf("Difference con zona B inválida debería retornar error")
+	}
+
+	// GetInfo con zona inválida
+	if _, err := zone.GetInfo("Invalid/Zone", base); err == nil {
+		t.Errorf("GetInfo con zona inválida debería retornar error")
+	}
+}
+
+func TestIsDST(t *testing.T) {
+	// Madrid en Julio está en DST (CEST = UTC+2)
+	summer := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	isDstSummer, err := zone.IsDST("Europe/Madrid", summer)
+	if err != nil || !isDstSummer {
+		t.Errorf("Madrid en Julio debería estar en DST (isDST=true)")
+	}
+
+	// Madrid en Enero no está en DST (CET = UTC+1)
+	winter := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	isDstWinter, err := zone.IsDST("Europe/Madrid", winter)
+	if err != nil || isDstWinter {
+		t.Errorf("Madrid en Enero NO debería estar en DST (isDST=false)")
+	}
+
+	// Hemisferio Sur: Sydney está en DST en Enero (AEDT = UTC+11)
+	isDstSydneyJan, err := zone.IsDST("Australia/Sydney", winter)
+	if err != nil || !isDstSydneyJan {
+		t.Errorf("Sydney en Enero debería estar en DST (isDST=true)")
+	}
+
+	// Error con zona inválida
+	if _, err := zone.IsDST("Invalid/Zone", summer); err == nil {
+		t.Errorf("IsDST con zona inválida debería retornar error")
+	}
+}
+
+func TestCommonZones_Immutability(t *testing.T) {
+	zones := zone.CommonZones()
+	if len(zones) == 0 {
+		t.Fatal("CommonZones() no debe estar vacío")
+	}
+
+	// Mutar el slice retornado no debe afectar llamadas posteriores
+	originalFirst := zones[0]
+	zones[0] = "MODIFIED_ZONE"
+
+	freshZones := zone.CommonZones()
+	if freshZones[0] != originalFirst {
+		t.Errorf("CommonZones() debe retornar copias defensivas inmutables")
 	}
 }

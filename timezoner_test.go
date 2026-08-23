@@ -1,6 +1,7 @@
 package timezoner_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -17,7 +18,16 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 		t.Errorf("Hora esperada 15 UTC, obtenida: %d", dbTime.Hour())
 	}
 
-	// 2. Proyección Madrid (UTC+2 en verano → 17:00)
+	// 2. IngestUnix y IngestUnixMilli
+	_ = timezoner.IngestFromUnix(1700000000)
+	_ = timezoner.IngestNow()
+	_ = timezoner.IngestTime(time.Now())
+	locT, _ := timezoner.IngestFromLocal(time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC), "America/Lima")
+	if locT.Hour() != 15 {
+		t.Errorf("IngestFromLocal hora esperada 15, obtenida %d", locT.Hour())
+	}
+
+	// 3. Proyección Madrid (UTC+2 en verano → 17:00)
 	userMadrid, err := timezoner.ProjectForUser(dbTime, "Europe/Madrid")
 	if err != nil {
 		t.Fatalf("ProjectForUser falló: %v", err)
@@ -26,7 +36,17 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 		t.Errorf("Hora Madrid esperada 17, obtenida: %d", userMadrid.LocalTime.Hour())
 	}
 
-	// 3. Fluent API: días hábiles, límites de mes y día
+	projFmt, err := timezoner.ProjectFormat(dbTime, "America/Lima", "15:04")
+	if err != nil || projFmt != "10:00" {
+		t.Errorf("ProjectFormat falló: %s", projFmt)
+	}
+
+	projBatch, err := timezoner.ProjectBatchForUsers(dbTime, []string{"America/Lima", "Europe/Madrid"})
+	if err != nil || len(projBatch) != 2 {
+		t.Errorf("ProjectBatchForUsers falló")
+	}
+
+	// 4. Fluent API: días hábiles, límites de mes, día, semana
 	dueDate := timezoner.At(dbTime).
 		AddBusinessDays(3).
 		StartOfMonth().
@@ -38,7 +58,6 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 		t.Errorf("EndOfDay falló, obtenido: %v", dueDate)
 	}
 
-	// 4. StartOfWeek / EndOfWeek
 	monday := timezoner.At(dbTime).StartOfWeek().MustTime()
 	if monday.Weekday() != time.Monday {
 		t.Errorf("StartOfWeek debe ser lunes, obtenido: %v", monday.Weekday())
@@ -79,6 +98,11 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 		t.Errorf("FormatIn falló, obtenido: %s", formatted)
 	}
 
+	fmtEmptyLayout, err := timezoner.FormatIn(dbTime, "UTC", "")
+	if err != nil || fmtEmptyLayout == "" {
+		t.Errorf("FormatIn con layout vacío falló")
+	}
+
 	convertedBetween, err := timezoner.ConvertBetween("2026-09-01 10:00", "2006-01-02 15:04", "America/Lima", "Europe/Madrid")
 	if err != nil || convertedBetween.Hour() != 17 {
 		t.Errorf("ConvertBetween falló")
@@ -112,14 +136,25 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 	if timezoner.StartOfDay(dbTime).Hour() != 0 {
 		t.Errorf("StartOfDay falló")
 	}
+	_ = timezoner.StartOfYear(dbTime)
+	_ = timezoner.EndOfYear(dbTime)
 
-	// 11. SupportedLayouts es función (no variable mutable)
+	// 11. Zone helpers
+	_ = timezoner.FormatOffset(-18000)
+	_ = timezoner.CommonZones()
+	_ = timezoner.IsValid("America/Lima")
+	_, _ = timezoner.NormalizeZone("PET")
+	_, _ = timezoner.LoadLocation("UTC")
+	_, _ = timezoner.IsDST("Europe/Madrid", dbTime)
+	_, _ = timezoner.Difference("Europe/Madrid", "America/Lima", dbTime)
+
+	// 12. SupportedLayouts
 	layouts := timezoner.SupportedLayouts()
 	if len(layouts) == 0 {
 		t.Errorf("SupportedLayouts no debe estar vacío")
 	}
 
-	// 12. Fluent API — AsDBTime, AsZonedTime, Err()
+	// 13. Fluent API — AsDBTime, AsZonedTime, Err()
 	tp := timezoner.Now().In("America/Lima").ToUTC()
 	if tp.Err() != nil {
 		t.Errorf("TimePoint no debe tener error: %v", tp.Err())
@@ -132,12 +167,106 @@ func TestTimezoner_FacadeE2E(t *testing.T) {
 	_, _ = tp.AsZonedTime("America/Lima")
 }
 
+func TestTimezoner_ErrorsAndPanics(t *testing.T) {
+	now := time.Now()
+
+	// Convert error
+	if _, err := timezoner.Convert(now, "Invalid/Zone"); err == nil {
+		t.Errorf("Convert con zona inválida debería retornar error")
+	}
+
+	// ConvertBetween errors
+	if _, err := timezoner.ConvertBetween("2026-09-01", "2006-01-02", "Invalid/Zone", "UTC"); err == nil {
+		t.Errorf("ConvertBetween con fromZone inválida debería fallar")
+	}
+	if _, err := timezoner.ConvertBetween("2026-09-01", "2006-01-02", "UTC", "Invalid/Zone"); err == nil {
+		t.Errorf("ConvertBetween con toZone inválida debería fallar")
+	}
+	if _, err := timezoner.ConvertBetween("corrupt-date", "2006-01-02", "UTC", "UTC"); err == nil {
+		t.Errorf("ConvertBetween con fecha inválida debería fallar")
+	}
+
+	// NowIn error
+	if _, err := timezoner.NowIn("Invalid/Zone"); err == nil {
+		t.Errorf("NowIn con zona inválida debería fallar")
+	}
+
+	// FormatIn error
+	if _, err := timezoner.FormatIn(now, "Invalid/Zone", ""); err == nil {
+		t.Errorf("FormatIn con zona inválida debería fallar")
+	}
+
+	// Compare errors
+	if _, err := timezoner.Compare(now); err == nil || !errors.Is(err, timezoner.ErrNoZonesProvided) {
+		t.Errorf("Compare sin zonas debería retornar ErrNoZonesProvided")
+	}
+	if _, err := timezoner.Compare(now, "Invalid/Zone"); err == nil {
+		t.Errorf("Compare con zona inválida debería retornar error")
+	}
+
+	// ZonedFromLocal error
+	if _, err := timezoner.ZonedFromLocal("invalid-date", "America/Lima"); err == nil {
+		t.Errorf("ZonedFromLocal con fecha inválida debería fallar")
+	}
+
+	// Fluent API error propagation
+	tpErr := timezoner.At(now).In("Invalid/Zone")
+	if tpErr.Err() == nil {
+		t.Errorf("TimePoint debería contener error tras In(invalid)")
+	}
+	_ = tpErr.In("UTC")
+	_ = tpErr.ToUTC()
+	_ = tpErr.AddBusinessDays(1)
+	_ = tpErr.StartOfDay()
+	_ = tpErr.EndOfDay()
+	_ = tpErr.StartOfMonth()
+	_ = tpErr.EndOfMonth()
+	_ = tpErr.StartOfWeek()
+	_ = tpErr.EndOfWeek()
+	if _, err := tpErr.Humanize(); err == nil {
+		t.Errorf("Humanize tras error en TimePoint debería fallar")
+	}
+	if _, err := tpErr.HumanizeEn(); err == nil {
+		t.Errorf("HumanizeEn tras error en TimePoint debería fallar")
+	}
+	if _, err := tpErr.AsDBTime(); err == nil {
+		t.Errorf("AsDBTime tras error debería fallar")
+	}
+	if _, err := tpErr.AsZonedTime("America/Lima"); err == nil {
+		t.Errorf("AsZonedTime tras error debería fallar")
+	}
+	if _, err := tpErr.Time(); err == nil {
+		t.Errorf("Time() tras error debería fallar")
+	}
+	if _, err := tpErr.Format(""); err == nil {
+		t.Errorf("Format() tras error debería fallar")
+	}
+	if _, err := tpErr.Info(); err == nil {
+		t.Errorf("Info() tras error debería fallar")
+	}
+
+	// Panic tests
+	assertPanic(t, func() { tpErr.MustTime() })
+	assertPanic(t, func() { tpErr.MustDBTime() })
+	assertPanic(t, func() { tpErr.MustZonedTime("America/Lima") })
+	assertPanic(t, func() { timezoner.At(now).MustZonedTime("Invalid/Zone") })
+}
+
+func assertPanic(t *testing.T, f func()) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Se esperaba un pánico pero no ocurrió")
+		}
+	}()
+	f()
+}
+
 func TestTimezoner_ConcurrentStress(t *testing.T) {
 	const goroutines = 200
 	done := make(chan bool, goroutines)
 	now := time.Now()
 
-	// Verificación de RegisterAlias concurrente (race condition corregido)
 	for i := 0; i < goroutines; i++ {
 		go func(idx int) {
 			_, _ = timezoner.Convert(now, "America/Lima")
@@ -174,7 +303,6 @@ func FuzzIngestFromString(f *testing.F) {
 	f.Add("not-a-date", "Invalid/Zone")
 
 	f.Fuzz(func(t *testing.T, dateStr, zone string) {
-		// Nunca debe producir pánico, siempre retorna error o resultado válido
 		_, _ = timezoner.IngestFromString(dateStr, zone)
 	})
 }
