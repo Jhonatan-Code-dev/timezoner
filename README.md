@@ -1,57 +1,37 @@
-# 🌍 Timezoner
+# Timezoner
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
-[![Author](https://img.shields.io/badge/Author-Jhonatan-blue.svg)](https://github.com/)
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Zero Dependencies](https://img.shields.io/badge/Dependencies-0%20External-brightgreen)](go.mod)
-[![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-success)](timezoner_test.go)
-
-**Timezoner** es un paquete y módulo de alto rendimiento en **Golang** creado y mantenido por **Jhonatan**, diseñado para la conversión precisa de husos horarios IANA, cálculo de diferencias temporales, detección de horario de verano (DST) y planificación de horarios coincidentes para equipos internacionales.
-
-> ⚡ **Zero External Dependencies**: Desarrollado 100% sobre la biblioteca estándar de Go, con soporte integrado de caché concurrente en memoria (`sync.Map`) para máxima velocidad y eficiencia.
+Timezoner is a pure, zero-dependency Go package designed for precise IANA timezone conversions, temporal offset calculations, daylight saving time (DST) inspection, and distributed team meeting overlap scheduling.
 
 ---
 
-## 📋 Tabla de Contenidos
+## Overview
 
-- [Características](#-características)
-- [Instalación](#-instalación)
-- [Guía Rápida](#-guía-rápida)
-  - [1. Conversión de Zonas y Alias](#1-conversión-de-zonas-y-alias)
-  - [2. Fluent API (Estilo Encadenado)](#2-fluent-api-estilo-encadenado)
-  - [3. Cálculo de Diferencias y Detección de DST](#3-cálculo-de-diferencias-y-detección-de-dst)
-  - [4. Planificador de Solapamiento para Equipos (FindOverlap)](#4-planificador-de-solapamiento-para-equipos-findoverlap)
-  - [5. Comparador Múltiple de Zonas (Compare)](#5-comparador-múltiple-de-zonas-compare)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Pruebas y Verificación](#-pruebas-y-verificación)
-- [Autor y Licencia](#-autor-y-licencia)
+Working with distributed systems across timezones often requires complex conversions and edge-case handling around daylight saving transitions and non-standard offsets. Timezoner provides an idiomatic API built on top of the Go standard library with built-in concurrency safety and memory-cached location resolution.
 
----
+### Key Capabilities
 
-## ✨ Características
-
-- ⏱️ **Conversión y Parseo Seguro**: Conversión instantánea entre zonas IANA (`"America/Lima"`, `"UTC"`, `"Asia/Tokyo"`, etc.) y alias preconfigurados (`"PET"`, `"EST"`, `"CET"`, `"JST"`, `"COT"`, etc.).
-- ⛓️ **API Fluida**: Sintaxis encadenable y expresiva para construir y transformar instancias temporales (`timezoner.Now().In("Europe/Madrid").Format(...)`).
-- 📊 **Análisis de Zonas**: Obtención de offsets en segundos y formato legible (`+02:00`, `-05:00`), abreviaturas y cálculo de diferencia con UTC.
-- ☀️ **Detección de Horario de Verano (DST)**: Detección automática de si un huso horario tiene activo el horario de verano en un instante dado.
-- 🤝 **Overlap Meeting Planner**: Algoritmo para encontrar ventanas de horario laboral coincidentes entre múltiples zonas del mundo.
-- 🚀 **Rendimiento Óptimo**: Sin dependencias de terceros y con resolución de `time.Location` optimizada mediante caché.
+- **IANA Timezone Conversion**: Safe conversion between any valid IANA location or common abbreviation alias (`UTC`, `EST`, `CET`, `PET`, `JST`).
+- **Meeting Overlap Calculation**: Calculates matching working hours across global teams for any target calendar date.
+- **DST & Offset Inspection**: Determine active daylight saving status and exact duration offsets between two zones.
+- **Fluent API**: Chainable methods for building and transforming temporal representations.
+- **Zero External Dependencies**: Implemented entirely with the Go standard library (`time`, `sync`, `errors`, `fmt`).
+- **Thread-Safe Caching**: Concurrent in-memory cache (`sync.Map`) for `*time.Location` lookups to minimize runtime overhead.
 
 ---
 
-## 📦 Instalación
-
-Para importar **Timezoner** en tu proyecto:
+## Installation
 
 ```bash
 go get timezoner
 ```
 
+Requires Go 1.22 or higher.
+
 ---
 
-## 🚀 Guía Rápida
+## Usage
 
-### 1. Conversión de Zonas y Alias
+### 1. Basic Conversion
 
 ```go
 package main
@@ -65,56 +45,84 @@ import (
 func main() {
 	now := time.Now()
 
-	// Convertir a huso horario de Tokio
+	// Convert to Tokyo time
 	tokyoTime, err := timezoner.Convert(now, "Asia/Tokyo")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Hora en Tokio: %s\n", tokyoTime.Format("2006-01-02 15:04:05 MST"))
+	fmt.Println("Tokyo time:", tokyoTime.Format("2006-01-02 15:04:05 MST"))
 
-	// Hora actual utilizando alias común (PET = America/Lima)
-	limaTime, _ := timezoner.NowIn("PET")
-	fmt.Printf("Hora en Lima: %s\n", limaTime.Format("15:04:05"))
+	// Direct lookup using common alias (PET = America/Lima)
+	limaTime, err := timezoner.NowIn("PET")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Lima time:", limaTime.Format("15:04:05"))
 }
 ```
 
 ---
 
-### 2. Fluent API (Estilo Encadenado)
+### 2. Fluent API
 
 ```go
-formatted, err := timezoner.Now().
-	In("Europe/Paris").
-	Format("2006-01-02 15:04:05 MST")
+package main
 
-if err != nil {
-	panic(err)
+import (
+	"fmt"
+	"timezoner"
+)
+
+func main() {
+	formatted, err := timezoner.Now().
+		In("Europe/Paris").
+		Format("2006-01-02 15:04:05 MST")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Paris:", formatted)
 }
-
-fmt.Printf("Hora en París: %s\n", formatted)
 ```
 
 ---
 
-### 3. Cálculo de Diferencias y Detección de DST
+### 3. Time Difference and DST Detection
 
 ```go
-targetDate := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+package main
 
-// Calcular diferencia horaria exacta
-diff, _ := timezoner.Difference("Europe/Madrid", "America/Lima", targetDate)
-fmt.Printf("Diferencia horaria: %v horas\n", diff.Hours()) // +7.0 horas
+import (
+	"fmt"
+	"time"
+	"timezoner"
+)
 
-// Comprobar estado de Horario de Verano (DST)
-isDST, _ := timezoner.IsDST("Europe/Madrid", targetDate)
-fmt.Printf("¿Madrid en horario de verano?: %v\n", isDST) // true en Julio
+func main() {
+	targetDate := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+
+	// Calculate exact offset difference between two zones
+	diff, err := timezoner.Difference("Europe/Madrid", "America/Lima", targetDate)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Difference: %v hours\n", diff.Hours()) // +7.0 hours
+
+	// Check if daylight saving time is active
+	isDST, err := timezoner.IsDST("Europe/Madrid", targetDate)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Madrid in DST: %v\n", isDST) // true in July
+}
 ```
 
 ---
 
-### 4. Planificador de Solapamiento para Equipos (`FindOverlap`)
+### 4. Distributed Team Meeting Overlap
 
-Encuentra ventanas de tiempo hábiles comunes para coordinar reuniones entre participantes de distintos países:
+Calculate overlapping business hours for teams across different continents:
 
 ```go
 package main
@@ -129,76 +137,124 @@ func main() {
 	slots, err := timezoner.FindOverlap(timezoner.OverlapRequest{
 		Date:         time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC),
 		Zones:        []string{"America/Lima", "America/New_York", "Europe/Madrid"},
-		DefaultHours: timezoner.WorkingHours{StartHour: 9, EndHour: 18}, // 09:00 a 18:00
+		DefaultHours: timezoner.WorkingHours{StartHour: 9, EndHour: 18}, // 09:00 - 18:00
 		SlotDuration: 1 * time.Hour,
 	})
-
 	if err != nil {
 		panic(err)
 	}
 
 	for i, slot := range slots {
-		fmt.Printf("Ventana #%d (Duración: %v):\n", i+1, slot.Duration)
-		fmt.Printf("  • UTC:         %s - %s\n", slot.StartTimeUTC.Format("15:04"), slot.EndTimeUTC.Format("15:04"))
-		fmt.Printf("  • Lima:        %s - %s\n", slot.ZoneTimes["America/Lima"].Format("15:04"), slot.ZoneTimes["America/Lima"].Add(slot.Duration).Format("15:04"))
-		fmt.Printf("  • Nueva York:  %s - %s\n", slot.ZoneTimes["America/New_York"].Format("15:04"), slot.ZoneTimes["America/New_York"].Add(slot.Duration).Format("15:04"))
-		fmt.Printf("  • Madrid:      %s - %s\n", slot.ZoneTimes["Europe/Madrid"].Format("15:04"), slot.ZoneTimes["Europe/Madrid"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("Window #%d (Duration: %v):\n", i+1, slot.Duration)
+		fmt.Printf("  UTC:       %s - %s\n", 
+			slot.StartTimeUTC.Format("15:04"), 
+			slot.EndTimeUTC.Format("15:04"))
+		fmt.Printf("  Lima:      %s - %s\n", 
+			slot.ZoneTimes["America/Lima"].Format("15:04"), 
+			slot.ZoneTimes["America/Lima"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("  New York:  %s - %s\n", 
+			slot.ZoneTimes["America/New_York"].Format("15:04"), 
+			slot.ZoneTimes["America/New_York"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("  Madrid:    %s - %s\n", 
+			slot.ZoneTimes["Europe/Madrid"].Format("15:04"), 
+			slot.ZoneTimes["Europe/Madrid"].Add(slot.Duration).Format("15:04"))
 	}
 }
 ```
 
 ---
 
-### 5. Comparador Múltiple de Zonas (`Compare`)
+### 5. Multi-Zone Comparison
 
 ```go
-snapshots, err := timezoner.Compare(time.Now(), "America/Lima", "Europe/London", "Asia/Tokyo")
-if err != nil {
-	panic(err)
-}
+package main
 
-for _, s := range snapshots {
-	fmt.Printf("%-22s | %s | Offset: %s | DST: %v\n", s.Zone, s.Formatted, s.OffsetFormatted, s.IsDST)
+import (
+	"fmt"
+	"time"
+	"timezoner"
+)
+
+func main() {
+	snapshots, err := timezoner.Compare(time.Now(), "America/Lima", "Europe/London", "Asia/Tokyo")
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range snapshots {
+		fmt.Printf("%-20s | %s | Offset: %s | DST: %v\n", 
+			s.Zone, s.Formatted, s.OffsetFormatted, s.IsDST)
+	}
 }
 ```
 
 ---
 
-## 📂 Estructura del Proyecto
+## API Summary
 
-```
-timezoner/
-├── go.mod                      # Módulo Go puro (0 dependencias externas)
-├── timezoner.go                # Funciones centrales y Fluent API
-├── zones.go                    # Mapeo de alias, validación y caché de zonas IANA
-├── timezoner_test.go           # Pruebas unitarias completas y benchmarks
-├── examples_test.go            # Ejemplos ejecutables para godoc / pkg.go.dev
-├── examples/                   # Casos de uso prácticos
-│   ├── basic_usage/main.go     # Ejemplo de uso de funciones básicas
-│   └── team_meeting_planner/main.go # Ejemplo del planificador de reuniones
-├── LICENSE                     # Licencia Propietaria Exclusiva
-└── README.md                   # Documentación técnica
-```
+| Function / Type | Description |
+| :--- | :--- |
+| `Convert(t, toZone)` | Converts a `time.Time` to a destination zone. |
+| `ConvertBetween(str, layout, from, to)` | Parses a formatted string in source zone and converts to target zone. |
+| `NowIn(zone)` | Returns current time in the specified zone or alias. |
+| `FormatIn(t, zone, layout)` | Formats a time in target zone using standard layout string. |
+| `GetZoneInfo(zone, at)` | Returns detailed timezone struct (offset, abbreviation, DST, UTC diff). |
+| `IsDST(zone, at)` | Reports whether daylight saving time is active for a given zone and instant. |
+| `Difference(zoneA, zoneB, at)` | Computes time difference duration between two locations. |
+| `Compare(at, zones...)` | Returns simultaneous time snapshots across multiple zones. |
+| `FindOverlap(req)` | Calculates intersecting working hour slots for distributed teams. |
+| `At(t)` / `Now()` | Initializes a `TimePoint` for fluent method chaining. |
 
 ---
 
-## 🧪 Pruebas y Verificación
+## Error Handling
 
-Para ejecutar la suite de pruebas unitarias y benchmarks:
+Timezoner exports standard sentinel errors for explicit verification via `errors.Is`:
+
+- `ErrEmptyZoneName`: Returned when an empty string is passed as a timezone identifier.
+- `ErrInvalidZone`: Returned when a timezone name cannot be resolved in the IANA database.
+- `ErrInvalidTimeFormat`: Returned when a date string fails to parse with the supplied layout.
+- `ErrNoZonesProvided`: Returned when a multi-zone operation is invoked with an empty list.
+
+---
+
+## Testing & Benchmarks
+
+Run unit tests and coverage report:
 
 ```bash
-# Ejecutar todas las pruebas con reporte de cobertura
 go test -v -cover ./...
+```
 
-# Ejecutar benchmarks de rendimiento
+Run benchmarks:
+
+```bash
 go test -bench=. -benchmem ./...
 ```
 
 ---
 
-## 👤 Autor y Licencia
+## Repository Layout
 
-- **Creador y Autor**: **Jhonatan**
-- **Licencia**: **Licencia Propietaria / Todos los derechos reservados**.
+```
+.
+├── go.mod                      # Module definition
+├── timezoner.go                # Core library and Fluent API
+├── zones.go                    # IANA catalog, location cache, and alias dictionary
+├── timezoner_test.go           # Unit tests, fuzz testing, concurrency, and benchmarks
+├── examples_test.go            # Executable godoc examples
+├── examples/
+│   ├── basic_usage/main.go     # Basic conversion examples
+│   └── team_meeting_planner/   # Meeting planner example
+├── LICENSE                     # Proprietary License
+└── README.md                   # Technical documentation
+```
 
-> ⚠️ **Aviso de Propiedad Intelectual**: Este software es propiedad exclusiva de **Jhonatan**. Queda estrictamente prohibida la copia, distribución, modificación, sublicenciamiento, alteración o comercialización de este código fuente sin la autorización expresa y por escrito de su autor. Consulta el archivo [`LICENSE`](LICENSE) para más detalles.
+---
+
+## Author & Legal Notice
+
+- **Author & Creator**: Jhonatan
+- **License**: Proprietary License. All rights reserved.
+
+Unauthorized copying, distribution, modification, or sublicensing of this software and associated documentation files is strictly prohibited. Refer to [LICENSE](LICENSE) for full terms.
