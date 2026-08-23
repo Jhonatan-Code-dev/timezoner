@@ -2,15 +2,20 @@
 
 Timezoner is a pure, zero-dependency Go package designed for precise IANA timezone conversions, temporal offset calculations, daylight saving time (DST) inspection, and distributed team meeting overlap scheduling.
 
+It includes dedicated sub-packages for handling the complete database datetime lifecycle:
+- **`timezoner/ingest`**: Normalizes and sanitizes all incoming timestamps into global UTC before database persistence.
+- **`timezoner/project`**: Projects and formats stored UTC timestamps into the exact local time and format required by each user.
+
 ---
 
 ## Overview
 
-Working with distributed systems across timezones often requires complex conversions and edge-case handling around daylight saving transitions and non-standard offsets. Timezoner provides an idiomatic API built on top of the Go standard library with built-in concurrency safety and memory-cached location resolution.
+Working with distributed systems across timezones requires robust handling of daylight saving transitions, non-standard offsets, and persistence standardization. Timezoner provides an idiomatic API built on top of the Go standard library with built-in concurrency safety and memory-cached location resolution.
 
 ### Key Capabilities
 
-- **IANA Timezone Conversion**: Safe conversion between any valid IANA location or common abbreviation alias (`UTC`, `EST`, `CET`, `PET`, `JST`).
+- **Database Ingestion (`ingest`)**: Convert user inputs, timestamps, and date strings from any local zone to standardized UTC.
+- **User Projection (`project`)**: Adapt stored UTC records into localized dates with ISO 8601 strings, offsets, and DST flags.
 - **Meeting Overlap Calculation**: Calculates matching working hours across global teams for any target calendar date.
 - **DST & Offset Inspection**: Determine active daylight saving status and exact duration offsets between two zones.
 - **Fluent API**: Chainable methods for building and transforming temporal representations.
@@ -29,9 +34,41 @@ Requires Go 1.22 or higher.
 
 ---
 
-## Usage
+## Complete Database Lifecycle Workflow
 
-### 1. Basic Conversion
+```
+[ Incoming User Input ]  -->  [ timezoner/ingest ]  -->  [ Database (UTC) ]  -->  [ timezoner/project ]  -->  [ Local User Response ]
+```
+
+### 1. Ingestion: Normalizing to UTC Before Database Storage
+
+```go
+package main
+
+import (
+	"fmt"
+	"timezoner/ingest"
+)
+
+func main() {
+	// A user in Lima submits a local datetime string
+	inputDate := "2026-09-01 10:00:00"
+	sourceZone := "America/Lima"
+
+	// Normalize to absolute UTC for database storage
+	dbTimeUTC, err := ingest.FromString(inputDate, sourceZone)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Save to DB (UTC):", dbTimeUTC.Format("2006-01-02 15:04:05 UTC"))
+	// Output: 2026-09-01 15:00:00 UTC
+}
+```
+
+---
+
+### 2. Projection: Reading from Database for Different Users
 
 ```go
 package main
@@ -39,31 +76,28 @@ package main
 import (
 	"fmt"
 	"time"
-	"timezoner"
+	"timezoner/project"
 )
 
 func main() {
-	now := time.Now()
+	// Value retrieved from DB in UTC
+	dbRecordUTC := time.Date(2026, 9, 1, 15, 0, 0, 0, time.UTC)
 
-	// Convert to Tokyo time
-	tokyoTime, err := timezoner.Convert(now, "Asia/Tokyo")
+	// Project for a viewer in Madrid
+	userMadrid, err := project.ForUser(dbRecordUTC, "Europe/Madrid")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Tokyo time:", tokyoTime.Format("2006-01-02 15:04:05 MST"))
 
-	// Direct lookup using common alias (PET = America/Lima)
-	limaTime, err := timezoner.NowIn("PET")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Lima time:", limaTime.Format("15:04:05"))
+	fmt.Printf("Madrid: %s (Offset: %s, DST: %v)\n", 
+		userMadrid.Formatted, userMadrid.OffsetFormatted, userMadrid.IsDST)
+	// Output: Madrid: 2026-09-01 17:00:00 (Offset: +02:00, DST: true)
 }
 ```
 
 ---
 
-### 2. Fluent API
+### 3. Core Conversion & Fluent API
 
 ```go
 package main
@@ -75,54 +109,20 @@ import (
 
 func main() {
 	formatted, err := timezoner.Now().
-		In("Europe/Paris").
+		In("Asia/Tokyo").
 		Format("2006-01-02 15:04:05 MST")
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Paris:", formatted)
-}
-```
-
----
-
-### 3. Time Difference and DST Detection
-
-```go
-package main
-
-import (
-	"fmt"
-	"time"
-	"timezoner"
-)
-
-func main() {
-	targetDate := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
-
-	// Calculate exact offset difference between two zones
-	diff, err := timezoner.Difference("Europe/Madrid", "America/Lima", targetDate)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Difference: %v hours\n", diff.Hours()) // +7.0 hours
-
-	// Check if daylight saving time is active
-	isDST, err := timezoner.IsDST("Europe/Madrid", targetDate)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Madrid in DST: %v\n", isDST) // true in July
+	fmt.Println("Tokyo:", formatted)
 }
 ```
 
 ---
 
 ### 4. Distributed Team Meeting Overlap
-
-Calculate overlapping business hours for teams across different continents:
 
 ```go
 package main
@@ -146,64 +146,23 @@ func main() {
 
 	for i, slot := range slots {
 		fmt.Printf("Window #%d (Duration: %v):\n", i+1, slot.Duration)
-		fmt.Printf("  UTC:       %s - %s\n", 
-			slot.StartTimeUTC.Format("15:04"), 
-			slot.EndTimeUTC.Format("15:04"))
-		fmt.Printf("  Lima:      %s - %s\n", 
-			slot.ZoneTimes["America/Lima"].Format("15:04"), 
-			slot.ZoneTimes["America/Lima"].Add(slot.Duration).Format("15:04"))
-		fmt.Printf("  New York:  %s - %s\n", 
-			slot.ZoneTimes["America/New_York"].Format("15:04"), 
-			slot.ZoneTimes["America/New_York"].Add(slot.Duration).Format("15:04"))
-		fmt.Printf("  Madrid:    %s - %s\n", 
-			slot.ZoneTimes["Europe/Madrid"].Format("15:04"), 
-			slot.ZoneTimes["Europe/Madrid"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("  UTC:       %s - %s\n", slot.StartTimeUTC.Format("15:04"), slot.EndTimeUTC.Format("15:04"))
+		fmt.Printf("  Lima:      %s - %s\n", slot.ZoneTimes["America/Lima"].Format("15:04"), slot.ZoneTimes["America/Lima"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("  New York:  %s - %s\n", slot.ZoneTimes["America/New_York"].Format("15:04"), slot.ZoneTimes["America/New_York"].Add(slot.Duration).Format("15:04"))
+		fmt.Printf("  Madrid:    %s - %s\n", slot.ZoneTimes["Europe/Madrid"].Format("15:04"), slot.ZoneTimes["Europe/Madrid"].Add(slot.Duration).Format("15:04"))
 	}
 }
 ```
 
 ---
 
-### 5. Multi-Zone Comparison
+## Package Architecture
 
-```go
-package main
-
-import (
-	"fmt"
-	"time"
-	"timezoner"
-)
-
-func main() {
-	snapshots, err := timezoner.Compare(time.Now(), "America/Lima", "Europe/London", "Asia/Tokyo")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range snapshots {
-		fmt.Printf("%-20s | %s | Offset: %s | DST: %v\n", 
-			s.Zone, s.Formatted, s.OffsetFormatted, s.IsDST)
-	}
-}
-```
-
----
-
-## API Summary
-
-| Function / Type | Description |
+| Package | Purpose |
 | :--- | :--- |
-| `Convert(t, toZone)` | Converts a `time.Time` to a destination zone. |
-| `ConvertBetween(str, layout, from, to)` | Parses a formatted string in source zone and converts to target zone. |
-| `NowIn(zone)` | Returns current time in the specified zone or alias. |
-| `FormatIn(t, zone, layout)` | Formats a time in target zone using standard layout string. |
-| `GetZoneInfo(zone, at)` | Returns detailed timezone struct (offset, abbreviation, DST, UTC diff). |
-| `IsDST(zone, at)` | Reports whether daylight saving time is active for a given zone and instant. |
-| `Difference(zoneA, zoneB, at)` | Computes time difference duration between two locations. |
-| `Compare(at, zones...)` | Returns simultaneous time snapshots across multiple zones. |
-| `FindOverlap(req)` | Calculates intersecting working hour slots for distributed teams. |
-| `At(t)` / `Now()` | Initializes a `TimePoint` for fluent method chaining. |
+| **`timezoner`** | Core timezone conversions, comparisons, overlap calculations, and Fluent API. |
+| **`timezoner/ingest`** | Sanitizes and converts incoming user dates/strings into monotonic-clean UTC for DB storage. |
+| **`timezoner/project`** | Projects stored UTC records into user-specific timezones with ISO 8601 formatting and DST details. |
 
 ---
 
@@ -211,16 +170,17 @@ func main() {
 
 Timezoner exports standard sentinel errors for explicit verification via `errors.Is`:
 
-- `ErrEmptyZoneName`: Returned when an empty string is passed as a timezone identifier.
-- `ErrInvalidZone`: Returned when a timezone name cannot be resolved in the IANA database.
-- `ErrInvalidTimeFormat`: Returned when a date string fails to parse with the supplied layout.
-- `ErrNoZonesProvided`: Returned when a multi-zone operation is invoked with an empty list.
+- `timezoner.ErrEmptyZoneName`: Returned when an empty string is passed as a timezone identifier.
+- `timezoner.ErrInvalidZone`: Returned when a timezone name cannot be resolved in the IANA database.
+- `timezoner.ErrInvalidTimeFormat`: Returned when a date string fails to parse with the supplied layout.
+- `timezoner.ErrNoZonesProvided`: Returned when a multi-zone operation is invoked with an empty list.
+- `ingest.ErrEmptyDateString`: Returned when an empty date string is submitted for ingestion.
 
 ---
 
 ## Testing & Benchmarks
 
-Run unit tests and coverage report:
+Run unit tests across all packages:
 
 ```bash
 go test -v -cover ./...
@@ -243,8 +203,15 @@ go test -bench=. -benchmem ./...
 ├── zones.go                    # IANA catalog, location cache, and alias dictionary
 ├── timezoner_test.go           # Unit tests, fuzz testing, concurrency, and benchmarks
 ├── examples_test.go            # Executable godoc examples
+├── ingest/
+│   ├── ingest.go               # Ingestion & normalization to UTC for DB
+│   └── ingest_test.go          # Unit tests for ingest module
+├── project/
+│   ├── project.go              # Projection & formatting for destination users
+│   └── project_test.go         # Unit tests for project module
 ├── examples/
 │   ├── basic_usage/main.go     # Basic conversion examples
+│   ├── db_lifecycle_demo/      # Full Ingestion -> DB -> Projection demo
 │   └── team_meeting_planner/   # Meeting planner example
 ├── LICENSE                     # Proprietary License
 └── README.md                   # Technical documentation
