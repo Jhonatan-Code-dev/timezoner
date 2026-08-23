@@ -19,3 +19,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+ACKNOWLEDGEMENTS AND THIRD-PARTY NOTICES:
+
+This software utilizes and integrates components from the Go Standard Library
+and the IANA Time Zone Database:
+
+1. The Go Standard Library:
+   Copyright (c) 2009 The Go Authors. All rights reserved.
+   Licensed under the BSD 3-Clause License:
+   https://golang.org/LICENSE
+
+2. IANA Time Zone Database (tzdata):
+   Maintained by the Internet Assigned Numbers Authority (IANA) / Paul Eggert.
+   Dedicated to the Public Domain:
+   https://www.iana.org/time-zones

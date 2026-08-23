@@ -396,7 +396,21 @@ Resultados empíricos obtenidos en procesador Intel Core i7-12700H (`go test -be
 
 ## Autor y Licencia
 
-- **Creador y Autor**: Jhonatan
-- **Licencia**: Licencia Propietaria ("All Rights Reserved").
+- **Creador y Autor Principal**: Jhonatan
+- **Licencia**: Licencia MIT con Copyright Jhonatan. Permite uso gratuito en proyectos personales, educativos y comerciales. Consulta el archivo [LICENSE](LICENSE) para conocer los términos completos.
 
-Queda estrictamente prohibida la copia, distribución, modificación o sublicenciamiento no autorizados de este software y sus archivos de documentación asociados. Consulta el archivo [LICENSE](LICENSE) para conocer los términos legales completos.
+---
+
+## Reconocimientos y Tecnologías Base (Acknowledgements)
+
+Este proyecto integra y se construye sobre los siguientes componentes de la comunidad de software libre:
+
+1. **Biblioteca Estándar de Go (`The Go Authors`)**:
+   - Módulos `time`, `time/tzdata`, `database/sql`, `sync`, `encoding/json`.
+   - Copyright (c) 2009 The Go Authors. Licenciado bajo Licencia BSD 3-Clause.
+   - https://golang.org/LICENSE
+
+2. **Base de Datos de Husos Horarios de la IANA (tzdata)**:
+   - Mantenida por la Internet Assigned Numbers Authority (IANA) y Paul Eggert.
+   - Dedicada al Dominio Público.
+   - https://www.iana.org/time-zones
