@@ -30,7 +30,7 @@ func main() {
 	fmt.Println("================================================================================")
 
 	var findings []AuditFinding
-
+	//
 	// -------------------------------------------------------------------------
 	// CASO 1: Regla Secular del Calendario Gregoriano (Años 1900, 2000, 2100)
 	// Regla: Divisible por 4 es bisiesto, EXCEPTO si es divisible por 100, A MENOS que sea divisible por 400.
