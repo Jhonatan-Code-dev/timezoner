@@ -450,6 +450,26 @@ func (tp *TimePoint) MustDBTime() DBTime {
 	return NewDBTime(tp.t)
 }
 
+// ZonedTime convierte el TimePoint en un ZonedTime asociando la zona especificada.
+func (tp *TimePoint) ZonedTime(zone string) (ZonedTime, error) {
+	if tp.err != nil {
+		return ZonedTime{}, tp.err
+	}
+	return NewZonedTime(tp.t, zone)
+}
+
+// MustZonedTime devuelve ZonedTime o produce pánico si hubo un error.
+func (tp *TimePoint) MustZonedTime(zone string) ZonedTime {
+	if tp.err != nil {
+		panic(tp.err)
+	}
+	z, err := NewZonedTime(tp.t, zone)
+	if err != nil {
+		panic(err)
+	}
+	return z
+}
+
 // Time devuelve el time.Time subyacente y el error acumulado si lo hubiera.
 func (tp *TimePoint) Time() (time.Time, error) {
 	return tp.t, tp.err
